@@ -24,9 +24,13 @@ class VideoPipeline:
         if isinstance(src, int) or (isinstance(src, str) and src.isdigit()):
             # USB webcam — use DirectShow + MJPG for full 720p/1080p resolution on Windows
             self.cap = cv2.VideoCapture(int(src), cv2.CAP_DSHOW)
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+            try:
+                if self.cap.isOpened():
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+            except Exception as e:
+                print(f"Warning: Could not set advanced webcam properties: {e}")
         else:
             # File path or IP camera / RTSP — let OpenCV handle it natively
             self.cap = cv2.VideoCapture(str(src))
