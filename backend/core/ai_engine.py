@@ -37,17 +37,25 @@ class AIEngine:
         else:
             self.tripwire_polygon = None
 
-    def _check_breach(self, bbox):
+    def _check_breach(self, bbox, frame_shape):
         """
         Checks if the bounding box intersects the virtual tripwire.
+        Scales the raw bounding box down to the frontend UI's 640x480 mapping.
         """
         if not self.tripwire_polygon:
             return False
             
         x1, y1, x2, y2 = bbox
+        h, w = frame_shape[:2]
+        
+        scale_x = 640.0 / w
+        scale_y = 480.0 / h
+        
+        sx1, sy1 = x1 * scale_x, y1 * scale_y
+        sx2, sy2 = x2 * scale_x, y2 * scale_y
         
         # Create a Polygon representing the object's bounding box
-        bbox_poly = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+        bbox_poly = Polygon([(sx1, sy1), (sx2, sy1), (sx2, sy2), (sx1, sy2)])
         
         if isinstance(self.tripwire_polygon, Polygon):
             return self.tripwire_polygon.intersects(bbox_poly)
@@ -113,7 +121,7 @@ class AIEngine:
                 x1, y1, x2, y2 = map(int, box)
                 
                 # Check Tripwire Breach
-                is_breaching = self._check_breach((x1, y1, x2, y2))
+                is_breaching = self._check_breach((x1, y1, x2, y2), raw_frame.shape)
                 
                 color = (0, 0, 255) if is_breaching else (255, 0, 0)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
@@ -145,7 +153,15 @@ class AIEngine:
 
         # Draw the tripwire on the display frame
         if len(self.tripwire_points) > 1:
-            pts = np.array(self.tripwire_points, np.int32)
+            h, w = raw_frame.shape[:2]
+            scale_x = w / 640.0
+            scale_y = h / 480.0
+            
+            scaled_pts = []
+            for pt in self.tripwire_points:
+                scaled_pts.append([int(pt[0] * scale_x), int(pt[1] * scale_y)])
+                
+            pts = np.array(scaled_pts, np.int32)
             pts = pts.reshape((-1, 1, 2))
             if self.tripwire_polygon and isinstance(self.tripwire_polygon, Polygon):
                 cv2.polylines(display_frame, [pts], True, (0, 165, 255), 2) # Orange for tripwire

@@ -56,8 +56,7 @@ class VideoPipeline:
             if not success:
                 return None, None
         
-        # Scale everything to 640x480 to match UI coordinate mappings precisely
-        frame = cv2.resize(frame, (640, 480))
+        # Keep original high resolution (no downscaling)
                 
         display_frame = frame.copy()
         

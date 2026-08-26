@@ -217,7 +217,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-200">
+    <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
       
       {/* Sidebar */}
       <aside className="w-64 flex flex-col border-r border-slate-800 bg-slate-900/50 shrink-0 select-none">
