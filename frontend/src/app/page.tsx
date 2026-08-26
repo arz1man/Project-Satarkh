@@ -258,7 +258,7 @@ export default function Dashboard() {
                 <div className="flex-1 flex items-end gap-2">
                   {/* Dummy bar chart */}
                   {[12, 45, 23, 67, 10, 8, 90, 34, 12, 5].map((val, i) => (
-                    <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/40 rounded-t-sm relative group" style={{ height: \`\${val}%\` }}>
+                    <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/40 rounded-t-sm relative group" style={{ height: `${val}%` }}>
                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-mono opacity-0 group-hover:opacity-100">{val}</div>
                     </div>
                   ))}
