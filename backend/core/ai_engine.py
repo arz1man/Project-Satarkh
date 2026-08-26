@@ -90,7 +90,13 @@ class AIEngine:
             if not os.path.exists("registered_faces") or len(os.listdir("registered_faces")) == 0:
                 return "Unregistered Target"
                 
-            dfs = DeepFace.find(img_path = cropped_person, db_path = "registered_faces", enforce_detection=False, silent=True)
+            dfs = DeepFace.find(
+                img_path=cropped_person, 
+                db_path="registered_faces", 
+                enforce_detection=False, 
+                silent=True,
+                detector_backend="mtcnn"
+            )
             if len(dfs) > 0 and len(dfs[0]) > 0:
                 # Get the matched filename without extension
                 matched_path = dfs[0].iloc[0]['identity']
