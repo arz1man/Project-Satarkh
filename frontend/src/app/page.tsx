@@ -55,6 +55,15 @@ export default function Dashboard() {
     } catch(e) {}
   };
 
+  // Sync default zone on mount
+  useEffect(() => {
+    fetch(`http://localhost:8000/api/tripwire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ points: defaultZone.map(p => [p.x, p.y]) })
+    }).catch(e => console.log("Backend not ready yet"));
+  }, []);
+
   // WebSocket for real events
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8000/ws/events');
