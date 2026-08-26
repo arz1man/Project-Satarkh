@@ -1,17 +1,21 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw } from 'lucide-react';
+import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw, Download } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState([
     { id: 'SYS', type: 'SYSTEM_START', time: new Date().toLocaleTimeString(), threat: 'NONE', label: 'System initialized' }
   ]);
   const [nightVision, setNightVision] = useState(false);
+  const [audioMuted, setAudioMuted] = useState(false);
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary'
+  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary' | 'analytics'
   
-  // Boundary Drawing State - Default 3D Parallelogram (Trapezoid) for floor perspective
+  // SOS State
+  const [isBreaching, setIsBreaching] = useState(false);
+  
+  // Boundary Drawing State
   const defaultZone = [
     { x: 150, y: 250 },
     { x: 490, y: 250 },
@@ -21,22 +25,53 @@ export default function Dashboard() {
   const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>(defaultZone);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const breachTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Play Tactical Beep using Web Audio API
+  const playAlarm = () => {
+    if (audioMuted) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1);
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+  };
 
   // WebSocket for real events
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8000/ws/events');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      const isCritical = data.type.includes('BREACH');
+      
       setEvents(prev => [{
         id: data.id.toString(),
         type: data.type,
         time: new Date(data.timestamp * 1000).toLocaleTimeString(),
-        threat: data.type.includes('BREACH') ? 'CRITICAL' : 'WARNING',
+        threat: isCritical ? 'CRITICAL' : 'WARNING',
         label: `Obj #${data.id} ${data.plate ? '| Plate: '+data.plate : ''} ${data.face ? '| Face: '+data.face : ''}`
-      }, ...prev].slice(0, 50));
+      }, ...prev].slice(0, 100));
+
+      if (isCritical) {
+        setIsBreaching(true);
+        playAlarm();
+        if (breachTimeoutRef.current) clearTimeout(breachTimeoutRef.current);
+        breachTimeoutRef.current = setTimeout(() => {
+          setIsBreaching(false);
+        }, 2000);
+      }
     };
     return () => ws.close();
-  }, []);
+  }, [audioMuted]);
 
   const toggleNightVision = async () => {
     const newVal = !nightVision;
@@ -51,7 +86,6 @@ export default function Dashboard() {
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     
-    // Scale to standard 640x480 coordinate space for the backend
     const scaleX = 640 / rect.width;
     const scaleY = 480 / rect.height;
     return {
@@ -78,7 +112,6 @@ export default function Dashboard() {
   const handlePointerUp = () => {
     setDraggingIdx(null);
   };
-  // ----------------------
 
   const saveBoundary = async () => {
     const points = drawPoints.map(p => [p.x, p.y]);
@@ -103,6 +136,16 @@ export default function Dashboard() {
     });
   };
 
+  const exportLogs = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "satark_logs.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-200">
       
@@ -125,14 +168,17 @@ export default function Dashboard() {
           >
             <PenTool size={18} /> Boundary Config
           </a>
+          <a 
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'analytics' ? 'bg-purple-500/10 text-purple-400' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <ChartColumn size={18} /> Analytics
+          </a>
           <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
             <Cctv size={18} /> Cameras
           </a>
           <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
             <BellRing size={18} /> Alerts Archive
-          </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
-            <ChartColumn size={18} /> Analytics
           </a>
         </nav>
         <div className="p-4 border-t border-slate-800">
@@ -154,6 +200,8 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 text-sm text-slate-400">
             {activeTab === 'boundary' ? (
               <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - DRAG CORNERS TO EDIT ZONE</span>
+            ) : activeTab === 'analytics' ? (
+              <span className="text-purple-400 font-mono font-bold">SYSTEM ANALYTICS & INTELLIGENCE</span>
             ) : (
               <>
                 <span>Active Feeds: 1</span>
@@ -162,6 +210,9 @@ export default function Dashboard() {
             )}
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => setAudioMuted(!audioMuted)} className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${!audioMuted ? 'bg-red-900/30 border-red-500 text-red-400 border' : 'bg-slate-800 text-slate-400'}`}>
+              AUDIO: {!audioMuted ? 'LIVE' : 'MUTED'}
+            </button>
             {activeTab === 'boundary' && (
               <>
                 <button onClick={resetBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
@@ -181,93 +232,137 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Dashboard Grid */}
+        {/* Dashboard Content */}
         <div className="flex-1 p-6 flex gap-6 overflow-hidden">
           
-          {/* Video Section */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
-            {/* Main Feed */}
-            <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black select-none ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-slate-700'}`}>
-              <img 
-                src="http://localhost:8000/video_feed" 
-                draggable={false}
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-                alt="Main Camera Feed"
-              />
-              
-              {/* Boundary Drawing Overlay */}
-              {activeTab === 'boundary' && (
-                <svg 
-                  ref={svgRef}
-                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none" 
-                  viewBox="0 0 640 480" 
-                  preserveAspectRatio="xMidYMid meet"
-                  onMouseMove={handlePointerMove}
-                  onMouseUp={handlePointerUp}
-                  onMouseLeave={handlePointerUp}
-                  onTouchMove={handlePointerMove}
-                  onTouchEnd={handlePointerUp}
-                >
-                  {drawPoints.length > 2 && (
-                    <polygon 
-                      points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
-                      fill="rgba(249, 115, 22, 0.15)" 
-                      stroke="#f97316" 
-                      strokeWidth="2" 
-                      strokeDasharray="8 4"
-                    />
-                  )}
-                  {drawPoints.map((p, i) => (
-                    <g key={i}>
-                      {/* Invisible larger hit area for easier grabbing */}
-                      <circle 
-                        cx={p.x} cy={p.y} r="20" 
-                        fill="transparent"
-                        className="cursor-grab active:cursor-grabbing"
-                        onMouseDown={(e) => handlePointerDown(i, e)}
-                        onTouchStart={(e) => handlePointerDown(i, e)}
-                      />
-                      {/* Visible handle */}
-                      <circle 
-                        cx={p.x} cy={p.y} r="6" 
-                        fill={draggingIdx === i ? "#fff" : "#f97316"} 
-                        stroke="#fff" strokeWidth="2"
-                        className="pointer-events-none"
-                      />
-                    </g>
-                  ))}
-                </svg>
-              )}
-
-              <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none">
-                <span className="rounded bg-black/60 px-2 py-1 font-mono text-[10px] text-white">CAM_01 // BORDER_PRIMARY</span>
-              </div>
-              <div className="absolute right-3 top-3 flex items-center gap-2 font-mono text-[10px] text-slate-300 pointer-events-none">
-                <span className="flex items-center gap-1 text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse"></span>REC</span>
-              </div>
-            </div>
-
-            {/* Bottom Grid (Placeholders for multi-cam) */}
-            <div className="h-44 grid grid-cols-3 gap-4 shrink-0">
-              {[2, 3, 4].map(num => (
-                <div key={num} className="relative rounded-xl border border-slate-800 bg-slate-900 overflow-hidden flex items-center justify-center">
-                   <div className="text-slate-600 font-mono text-xs text-center">
-                     <Cctv size={24} className="mx-auto mb-2 opacity-50" />
-                     CAM_0{num} OFFLINE
-                   </div>
-                   <div className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[8px] text-white">CAM_0{num}</div>
+          {/* Main Area based on Tab */}
+          {activeTab === 'analytics' ? (
+            <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-slate-400 text-xs font-mono mb-2">TOTAL INCIDENTS TODAY</h3>
+                  <p className="text-4xl font-bold text-white">{events.length}</p>
                 </div>
-              ))}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-slate-400 text-xs font-mono mb-2">CRITICAL BREACHES</h3>
+                  <p className="text-4xl font-bold text-red-500">{events.filter(e => e.threat === 'CRITICAL').length}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                  <h3 className="text-slate-400 text-xs font-mono mb-2">SYSTEM UPTIME</h3>
+                  <p className="text-4xl font-bold text-green-500">99.9%</p>
+                </div>
+              </div>
+              
+              <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col">
+                <h3 className="text-slate-400 text-xs font-mono mb-6">HOURLY THREAT DISTRIBUTION</h3>
+                <div className="flex-1 flex items-end gap-2">
+                  {/* Dummy bar chart */}
+                  {[12, 45, 23, 67, 10, 8, 90, 34, 12, 5].map((val, i) => (
+                    <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/40 rounded-t-sm relative group" style={{ height: \`\${val}%\` }}>
+                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-mono opacity-0 group-hover:opacity-100">{val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 flex flex-col gap-4 min-w-0">
+              {/* Main Feed */}
+              <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black select-none ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : isBreaching ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : 'border-slate-700'}`}>
+                
+                {/* SOS FLASH OVERLAY */}
+                {isBreaching && (
+                  <div className="absolute inset-0 bg-red-600/30 animate-pulse pointer-events-none z-10 flex items-center justify-center">
+                    <div className="bg-black/80 px-8 py-4 rounded-lg border-2 border-red-600">
+                      <h1 className="text-5xl font-black text-red-500 tracking-widest animate-bounce">SOS / BREACH DETECTED</h1>
+                    </div>
+                  </div>
+                )}
+
+                <img 
+                  src="http://localhost:8000/video_feed" 
+                  draggable={false}
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                  alt="Main Camera Feed"
+                />
+                
+                {/* Boundary Drawing Overlay */}
+                {activeTab === 'boundary' && (
+                  <svg 
+                    ref={svgRef}
+                    className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-20" 
+                    viewBox="0 0 640 480" 
+                    preserveAspectRatio="xMidYMid meet"
+                    onMouseMove={handlePointerMove}
+                    onMouseUp={handlePointerUp}
+                    onMouseLeave={handlePointerUp}
+                    onTouchMove={handlePointerMove}
+                    onTouchEnd={handlePointerUp}
+                  >
+                    {drawPoints.length > 2 && (
+                      <polygon 
+                        points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                        fill="rgba(249, 115, 22, 0.15)" 
+                        stroke="#f97316" 
+                        strokeWidth="2" 
+                        strokeDasharray="8 4"
+                      />
+                    )}
+                    {drawPoints.map((p, i) => (
+                      <g key={i}>
+                        <circle 
+                          cx={p.x} cy={p.y} r="20" 
+                          fill="transparent"
+                          className="cursor-grab active:cursor-grabbing"
+                          onMouseDown={(e) => handlePointerDown(i, e)}
+                          onTouchStart={(e) => handlePointerDown(i, e)}
+                        />
+                        <circle 
+                          cx={p.x} cy={p.y} r="6" 
+                          fill={draggingIdx === i ? "#fff" : "#f97316"} 
+                          stroke="#fff" strokeWidth="2"
+                          className="pointer-events-none"
+                        />
+                      </g>
+                    ))}
+                  </svg>
+                )}
+
+                <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none z-20">
+                  <span className="rounded bg-black/60 px-2 py-1 font-mono text-[10px] text-white">CAM_01 // BORDER_PRIMARY</span>
+                </div>
+                <div className="absolute right-3 top-3 flex items-center gap-2 font-mono text-[10px] text-slate-300 pointer-events-none z-20">
+                  <span className="flex items-center gap-1 text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse"></span>REC</span>
+                </div>
+              </div>
+
+              {/* Bottom Grid */}
+              <div className="h-44 grid grid-cols-3 gap-4 shrink-0">
+                {[2, 3, 4].map(num => (
+                  <div key={num} className="relative rounded-xl border border-slate-800 bg-slate-900 overflow-hidden flex items-center justify-center">
+                     <div className="text-slate-600 font-mono text-xs text-center">
+                       <Cctv size={24} className="mx-auto mb-2 opacity-50" />
+                       CAM_0{num} OFFLINE
+                     </div>
+                     <div className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[8px] text-white">CAM_0{num}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Event Log Right Sidebar */}
           <div className="w-80 flex flex-col border border-slate-800 rounded-xl bg-slate-900 shrink-0 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-800 p-4 shrink-0">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-white">Event Log</h2>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] text-blue-400">
-                <span className="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>LIVE RECAP
-              </span>
+              <div className="flex items-center gap-3">
+                <button onClick={exportLogs} className="text-slate-400 hover:text-white" title="Export Logs">
+                  <Download size={14} />
+                </button>
+                <span className="flex items-center gap-1.5 font-mono text-[10px] text-blue-400">
+                  <span className="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>LIVE
+                </span>
+              </div>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-700">
