@@ -36,6 +36,13 @@ class TripwireConfig(BaseModel):
 class SourceConfig(BaseModel):
     source: str
 
+main_loop = None
+
+@app.on_event("startup")
+async def startup_event():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
+
 @app.get("/")
 def read_root():
     return {"status": "Satark Backend is running"}
@@ -93,15 +100,9 @@ def generate_frames():
         processed_frame, events = ai_engine.process_frame(raw_frame, display_frame)
         
         # Broadcast events
-        if events:
-            # We can't await in a sync generator directly, so we use the event loop
-            try:
-                loop = asyncio.get_event_loop()
-                for evt in events:
-                    if loop.is_running():
-                        loop.create_task(broadcast_event(evt))
-            except RuntimeError:
-                pass
+        if events and main_loop:
+            for evt in events:
+                asyncio.run_coroutine_threadsafe(broadcast_event(evt), main_loop)
         
         # Encode frame as JPEG
         ret, buffer = cv2.imencode('.jpg', processed_frame)
