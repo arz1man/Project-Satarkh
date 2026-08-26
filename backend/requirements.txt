@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+websockets
+opencv-python
+ultralytics
+numpy
+shapely
+face_recognition
+easyocr
+python-multipart
