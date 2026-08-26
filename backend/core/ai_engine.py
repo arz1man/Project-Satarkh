@@ -16,7 +16,7 @@ class AIEngine:
         self.tripwire_polygon = None
         self.target_classes = [0, 2, 3, 5, 7]
         self.face_cache = {}
-        # Tracks which IDs have already fired a breach event (to avoid spam)
+        self.plate_cache = {}
         self.breach_fired = set()
 
     def set_tripwire(self, points):
@@ -58,18 +58,29 @@ class AIEngine:
             return self.tripwire_polygon.distance(ground_point) < 5
         return False
 
-    def _extract_license_plate(self, frame, bbox):
-        x1, y1, x2, y2 = bbox
-        cropped = frame[int(y1):int(y2), int(x1):int(x2)]
-        if cropped.size == 0:
-            return None
-        results = self.reader.readtext(cropped)
-        if results:
-            # Return highest-confidence result
-            best = max(results, key=lambda r: r[2])
-            if best[2] > 0.3:
-                return best[1].upper().strip()
-        return None
+    def _extract_license_plate_thread(self, cropped_vehicle, track_id):
+        """Runs EasyOCR in a background thread to never block the video feed."""
+        try:
+            if cropped_vehicle.size == 0:
+                return
+            results = self.reader.readtext(cropped_vehicle)
+            if results:
+                best = max(results, key=lambda r: r[2])
+                if best[2] > 0.3:
+                    self.plate_cache[track_id] = best[1].upper().strip()
+        except Exception as e:
+            print("ALPR error:", e)
+
+    def _extract_license_plate(self, frame, bbox, track_id):
+        """Non-blocking plate extraction — fires a thread, returns cached result."""
+        if track_id not in self.plate_cache:
+            x1, y1, x2, y2 = bbox
+            cropped = frame[int(y1):int(y2), int(x1):int(x2)].copy()
+            self.plate_cache[track_id] = None  # Mark as in-progress
+            t = threading.Thread(target=self._extract_license_plate_thread, args=(cropped, track_id))
+            t.daemon = True
+            t.start()
+        return self.plate_cache.get(track_id)
 
     def _run_face_rec_thread(self, cropped_person, track_id):
         """Runs FaceNet in a background thread — never blocks the video feed."""
@@ -133,10 +144,10 @@ class AIEngine:
                             t.start()
                     face_status = self.face_cache.get(track_id, "SCANNING")
 
-                # --- LICENSE PLATE (vehicles only, on breach) ---
+                # --- LICENSE PLATE (vehicles only, always try to read) ---
                 plate = None
-                if class_id != 0 and is_breaching:
-                    plate = self._extract_license_plate(raw_frame, box)
+                if class_id != 0:
+                    plate = self._extract_license_plate(raw_frame, box, track_id)
 
                 # --- BOUNDING BOX COLOR ---
                 # Red = breaching, Yellow = known person, Blue = normal

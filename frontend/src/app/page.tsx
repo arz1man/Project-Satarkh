@@ -454,11 +454,14 @@ export default function Dashboard() {
               {/* Main Feed */}
               <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black select-none ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : isBreaching ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : 'border-slate-700'}`}>
                 
-                {/* SOS FLASH OVERLAY */}
+                {/* SOS FLASH OVERLAY - fixed position so it never repaints the video stream */}
                 {isBreaching && (
-                  <div className="absolute inset-0 bg-red-600/30 animate-pulse pointer-events-none z-10 flex items-center justify-center">
-                    <div className="bg-black/80 px-8 py-4 rounded-lg border-2 border-red-600">
-                      <h1 className="text-5xl font-black text-red-500 tracking-widest animate-bounce">SOS / BREACH DETECTED</h1>
+                  <div className="fixed inset-0 pointer-events-none z-50" style={{willChange: 'opacity'}}>
+                    <div className="absolute inset-0 border-8 border-red-600 animate-pulse" />
+                    <div className="absolute top-0 left-0 right-0 flex items-center justify-center pt-4">
+                      <div className="bg-red-600 px-8 py-3 font-mono font-black text-white text-2xl tracking-widest">
+                        ⚠ PERIMETER BREACH DETECTED
+                      </div>
                     </div>
                   </div>
                 )}
