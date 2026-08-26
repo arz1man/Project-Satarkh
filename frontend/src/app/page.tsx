@@ -1,13 +1,19 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, Eye, Timer } from 'lucide-react';
+import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState([
     { id: 'SYS', type: 'SYSTEM_START', time: new Date().toLocaleTimeString(), threat: 'NONE', label: 'System initialized' }
   ]);
   const [nightVision, setNightVision] = useState(false);
-  const [tripwireActive, setTripwireActive] = useState(false);
+  
+  // Navigation State
+  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary'
+  
+  // Boundary Drawing State
+  const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>([]);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // WebSocket for real events
   useEffect(() => {
@@ -31,16 +37,42 @@ export default function Dashboard() {
     await fetch(`http://localhost:8000/api/nightvision?enabled=${newVal}`, { method: 'POST' });
   };
 
-  const toggleTripwire = async () => {
-    const newVal = !tripwireActive;
-    setTripwireActive(newVal);
-    // Simple line across the middle of the screen (assuming 640x480 standard webcam size for now)
-    const points = newVal ? [[100, 240], [540, 240]] : [];
+  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (activeTab !== 'boundary') return;
+    if (!imageRef.current) return;
     
+    // Calculate click position relative to the original image dimensions
+    // Assuming the backend sends a standard 640x480 frame for now. 
+    // In production, we'd scale this based on actual video feed resolution.
+    const rect = imageRef.current.getBoundingClientRect();
+    
+    // We'll just map it directly to 640x480 for the YOLO model scaling assumption
+    const scaleX = 640 / rect.width;
+    const scaleY = 480 / rect.height;
+    
+    const x = Math.round((e.clientX - rect.left) * scaleX);
+    const y = Math.round((e.clientY - rect.top) * scaleY);
+    
+    setDrawPoints(prev => [...prev, { x, y }]);
+  };
+
+  const saveBoundary = async () => {
+    // Send to backend
+    const points = drawPoints.map(p => [p.x, p.y]);
     await fetch(`http://localhost:8000/api/tripwire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ points })
+    });
+    setActiveTab('monitor');
+  };
+
+  const clearBoundary = async () => {
+    setDrawPoints([]);
+    await fetch(`http://localhost:8000/api/tripwire`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ points: [] })
     });
   };
 
@@ -54,19 +86,25 @@ export default function Dashboard() {
           <span className="font-semibold tracking-tight text-white uppercase">Project Satark</span>
         </div>
         <nav className="flex-1 space-y-1 p-4">
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium bg-blue-500/10 text-blue-400">
+          <a 
+            onClick={() => setActiveTab('monitor')}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'monitor' ? 'bg-blue-500/10 text-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
+          >
             <MonitorPlay size={18} /> Live Monitor
           </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 cursor-pointer">
+          <a 
+            onClick={() => setActiveTab('boundary')}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'boundary' ? 'bg-orange-500/10 text-orange-400' : 'text-slate-400 hover:text-slate-200'}`}
+          >
             <PenTool size={18} /> Boundary Config
           </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 cursor-pointer">
+          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
             <Cctv size={18} /> Cameras
           </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 cursor-pointer">
+          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
             <BellRing size={18} /> Alerts Archive
           </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 cursor-pointer">
+          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
             <ChartColumn size={18} /> Analytics
           </a>
         </nav>
@@ -87,13 +125,26 @@ export default function Dashboard() {
         {/* Header */}
         <header className="h-16 flex items-center justify-between border-b border-slate-800 px-8 bg-slate-900/30 shrink-0">
           <div className="flex items-center gap-4 text-sm text-slate-400">
-            <span>Active Feeds: 1</span>
-            <span>Storage: 84%</span>
+            {activeTab === 'boundary' ? (
+              <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - CLICK ON VIDEO TO DRAW POLYGON</span>
+            ) : (
+              <>
+                <span>Active Feeds: 1</span>
+                <span>Storage: 84%</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={toggleTripwire} className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${tripwireActive ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}>
-              {tripwireActive ? 'DISABLE TRIPWIRE' : 'ENABLE TRIPWIRE'}
-            </button>
+            {activeTab === 'boundary' && (
+              <>
+                 <button onClick={clearBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800">
+                  <X size={14} /> CLEAR
+                </button>
+                <button onClick={saveBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-green-900/50 hover:bg-green-900 text-green-200 border border-green-800">
+                  <Check size={14} /> SAVE ZONE
+                </button>
+              </>
+            )}
             <button onClick={toggleNightVision} className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${nightVision ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}>
               IR/NVG: {nightVision ? 'ON' : 'OFF'}
             </button>
@@ -106,16 +157,39 @@ export default function Dashboard() {
           {/* Video Section */}
           <div className="flex-1 flex flex-col gap-4 min-w-0">
             {/* Main Feed */}
-            <div className="flex-1 relative rounded-xl border border-slate-700 bg-black overflow-hidden flex items-center justify-center">
+            <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)] cursor-crosshair' : 'border-slate-700'}`}>
               <img 
+                ref={imageRef}
                 src="http://localhost:8000/video_feed" 
-                className="absolute inset-0 w-full h-full object-contain"
+                onClick={handleImageClick}
+                className="absolute inset-0 w-full h-full object-contain pointer-events-auto"
                 alt="Main Camera Feed"
               />
-              <div className="absolute left-3 top-3 flex items-center gap-2">
+              
+              {/* Boundary Drawing Overlay (Visual feedback for clicks) */}
+              {activeTab === 'boundary' && drawPoints.length > 0 && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg className="w-full h-full" viewBox="0 0 640 480" preserveAspectRatio="xMidYMid meet">
+                    {drawPoints.map((p, i) => (
+                      <circle key={i} cx={p.x} cy={p.y} r="4" fill="#f97316" />
+                    ))}
+                    {drawPoints.length > 1 && (
+                      <polyline 
+                        points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                        fill="none" 
+                        stroke="#f97316" 
+                        strokeWidth="2" 
+                        strokeDasharray="4 4"
+                      />
+                    )}
+                  </svg>
+                </div>
+              )}
+
+              <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none">
                 <span className="rounded bg-black/60 px-2 py-1 font-mono text-[10px] text-white">CAM_01 // BORDER_PRIMARY</span>
               </div>
-              <div className="absolute right-3 top-3 flex items-center gap-2 font-mono text-[10px] text-slate-300">
+              <div className="absolute right-3 top-3 flex items-center gap-2 font-mono text-[10px] text-slate-300 pointer-events-none">
                 <span className="flex items-center gap-1 text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse"></span>REC</span>
               </div>
             </div>

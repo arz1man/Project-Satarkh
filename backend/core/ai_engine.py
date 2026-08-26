@@ -45,15 +45,14 @@ class AIEngine:
             return False
             
         x1, y1, x2, y2 = bbox
-        # Check bottom center of the bounding box (where the feet/tires are)
-        bottom_center = Point((x1 + x2) / 2, y2)
+        
+        # Create a Polygon representing the object's bounding box
+        bbox_poly = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
         
         if isinstance(self.tripwire_polygon, Polygon):
-            return self.tripwire_polygon.contains(bottom_center)
+            return self.tripwire_polygon.intersects(bbox_poly)
         elif isinstance(self.tripwire_polygon, LineString):
-            # For a line, we usually check if the object crossed it between frames,
-            # but for a simple MVP, we check distance threshold.
-            return self.tripwire_polygon.distance(bottom_center) < 10
+            return self.tripwire_polygon.intersects(bbox_poly)
         return False
 
     def _extract_license_plate(self, frame, bbox):
