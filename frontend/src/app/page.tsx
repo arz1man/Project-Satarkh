@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check } from 'lucide-react';
+import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState([
@@ -11,9 +11,16 @@ export default function Dashboard() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary'
   
-  // Boundary Drawing State
-  const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>([]);
-  const imageRef = useRef<HTMLImageElement>(null);
+  // Boundary Drawing State - Default 3D Parallelogram (Trapezoid) for floor perspective
+  const defaultZone = [
+    { x: 150, y: 250 },
+    { x: 490, y: 250 },
+    { x: 580, y: 420 },
+    { x: 60, y: 420 }
+  ];
+  const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>(defaultZone);
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // WebSocket for real events
   useEffect(() => {
@@ -37,27 +44,43 @@ export default function Dashboard() {
     await fetch(`http://localhost:8000/api/nightvision?enabled=${newVal}`, { method: 'POST' });
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    if (activeTab !== 'boundary') return;
-    if (!imageRef.current) return;
+  // --- DRAGGING LOGIC ---
+  const getMousePos = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     
-    // Calculate click position relative to the original image dimensions
-    // Assuming the backend sends a standard 640x480 frame for now. 
-    // In production, we'd scale this based on actual video feed resolution.
-    const rect = imageRef.current.getBoundingClientRect();
-    
-    // We'll just map it directly to 640x480 for the YOLO model scaling assumption
+    // Scale to standard 640x480 coordinate space for the backend
     const scaleX = 640 / rect.width;
     const scaleY = 480 / rect.height;
-    
-    const x = Math.round((e.clientX - rect.left) * scaleX);
-    const y = Math.round((e.clientY - rect.top) * scaleY);
-    
-    setDrawPoints(prev => [...prev, { x, y }]);
+    return {
+      x: Math.round((clientX - rect.left) * scaleX),
+      y: Math.round((clientY - rect.top) * scaleY)
+    };
   };
 
+  const handlePointerDown = (idx: number, e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    setDraggingIdx(idx);
+  };
+
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (draggingIdx === null) return;
+    const { x, y } = getMousePos(e);
+    setDrawPoints(prev => {
+      const newPoints = [...prev];
+      newPoints[draggingIdx] = { x, y };
+      return newPoints;
+    });
+  };
+
+  const handlePointerUp = () => {
+    setDraggingIdx(null);
+  };
+  // ----------------------
+
   const saveBoundary = async () => {
-    // Send to backend
     const points = drawPoints.map(p => [p.x, p.y]);
     await fetch(`http://localhost:8000/api/tripwire`, {
       method: 'POST',
@@ -65,6 +88,10 @@ export default function Dashboard() {
       body: JSON.stringify({ points })
     });
     setActiveTab('monitor');
+  };
+
+  const resetBoundary = () => {
+    setDrawPoints(defaultZone);
   };
 
   const clearBoundary = async () => {
@@ -80,7 +107,7 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-slate-950 text-slate-200">
       
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col border-r border-slate-800 bg-slate-900/50 shrink-0">
+      <aside className="w-64 flex flex-col border-r border-slate-800 bg-slate-900/50 shrink-0 select-none">
         <div className="flex items-center gap-3 p-6 border-b border-slate-800">
           <div className="flex size-8 items-center justify-center rounded bg-blue-600 font-bold text-white">S</div>
           <span className="font-semibold tracking-tight text-white uppercase">Project Satark</span>
@@ -126,7 +153,7 @@ export default function Dashboard() {
         <header className="h-16 flex items-center justify-between border-b border-slate-800 px-8 bg-slate-900/30 shrink-0">
           <div className="flex items-center gap-4 text-sm text-slate-400">
             {activeTab === 'boundary' ? (
-              <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - CLICK ON VIDEO TO DRAW POLYGON</span>
+              <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - DRAG CORNERS TO EDIT ZONE</span>
             ) : (
               <>
                 <span>Active Feeds: 1</span>
@@ -137,7 +164,10 @@ export default function Dashboard() {
           <div className="flex items-center gap-4">
             {activeTab === 'boundary' && (
               <>
-                 <button onClick={clearBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800">
+                <button onClick={resetBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                  <RotateCcw size={14} /> DEFAULT 3D ZONE
+                </button>
+                <button onClick={clearBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800">
                   <X size={14} /> CLEAR
                 </button>
                 <button onClick={saveBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-green-900/50 hover:bg-green-900 text-green-200 border border-green-800">
@@ -157,33 +187,56 @@ export default function Dashboard() {
           {/* Video Section */}
           <div className="flex-1 flex flex-col gap-4 min-w-0">
             {/* Main Feed */}
-            <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)] cursor-crosshair' : 'border-slate-700'}`}>
+            <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black select-none ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'border-slate-700'}`}>
               <img 
-                ref={imageRef}
                 src="http://localhost:8000/video_feed" 
-                onClick={handleImageClick}
-                className="absolute inset-0 w-full h-full object-contain pointer-events-auto"
+                draggable={false}
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                 alt="Main Camera Feed"
               />
               
-              {/* Boundary Drawing Overlay (Visual feedback for clicks) */}
-              {activeTab === 'boundary' && drawPoints.length > 0 && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <svg className="w-full h-full" viewBox="0 0 640 480" preserveAspectRatio="xMidYMid meet">
-                    {drawPoints.map((p, i) => (
-                      <circle key={i} cx={p.x} cy={p.y} r="4" fill="#f97316" />
-                    ))}
-                    {drawPoints.length > 1 && (
-                      <polyline 
-                        points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
-                        fill="none" 
-                        stroke="#f97316" 
-                        strokeWidth="2" 
-                        strokeDasharray="4 4"
+              {/* Boundary Drawing Overlay */}
+              {activeTab === 'boundary' && (
+                <svg 
+                  ref={svgRef}
+                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none" 
+                  viewBox="0 0 640 480" 
+                  preserveAspectRatio="xMidYMid meet"
+                  onMouseMove={handlePointerMove}
+                  onMouseUp={handlePointerUp}
+                  onMouseLeave={handlePointerUp}
+                  onTouchMove={handlePointerMove}
+                  onTouchEnd={handlePointerUp}
+                >
+                  {drawPoints.length > 2 && (
+                    <polygon 
+                      points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                      fill="rgba(249, 115, 22, 0.15)" 
+                      stroke="#f97316" 
+                      strokeWidth="2" 
+                      strokeDasharray="8 4"
+                    />
+                  )}
+                  {drawPoints.map((p, i) => (
+                    <g key={i}>
+                      {/* Invisible larger hit area for easier grabbing */}
+                      <circle 
+                        cx={p.x} cy={p.y} r="20" 
+                        fill="transparent"
+                        className="cursor-grab active:cursor-grabbing"
+                        onMouseDown={(e) => handlePointerDown(i, e)}
+                        onTouchStart={(e) => handlePointerDown(i, e)}
                       />
-                    )}
-                  </svg>
-                </div>
+                      {/* Visible handle */}
+                      <circle 
+                        cx={p.x} cy={p.y} r="6" 
+                        fill={draggingIdx === i ? "#fff" : "#f97316"} 
+                        stroke="#fff" strokeWidth="2"
+                        className="pointer-events-none"
+                      />
+                    </g>
+                  ))}
+                </svg>
               )}
 
               <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none">
