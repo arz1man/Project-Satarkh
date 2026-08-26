@@ -126,7 +126,19 @@ class AIEngine:
                 color = (0, 0, 255) if is_breaching else (255, 0, 0)
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
                 
-                label = f"ID: {track_id} "
+                label = f"ID: {track_id}"
+                
+                # If Person, run Face Rec once and cache it to the tracker ID
+                face_status = None
+                if class_id == 0:
+                    if not hasattr(self, 'face_cache'):
+                        self.face_cache = {}
+                        
+                    if track_id not in self.face_cache or self.face_cache[track_id] == "Unknown":
+                        self.face_cache[track_id] = self._check_face(raw_frame, box)
+                        
+                    face_status = self.face_cache[track_id]
+                    label += f" | {face_status}"
                 
                 if is_breaching:
                     event_type = "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH"
@@ -136,18 +148,15 @@ class AIEngine:
                         "timestamp": time.time()
                     })
                     
+                    if class_id == 0 and face_status:
+                        events[-1]["face"] = face_status
+                    
                     # If Vehicle, try ALPR
                     if class_id != 0:
                         plate = self._extract_license_plate(raw_frame, box)
                         if plate:
                             label += f" | Plate: {plate}"
                             events[-1]["plate"] = plate
-                            
-                    # If Person, try Face Rec
-                    if class_id == 0:
-                        face_status = self._check_face(raw_frame, box)
-                        label += f" | {face_status}"
-                        events[-1]["face"] = face_status
                 
                 cv2.putText(display_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
