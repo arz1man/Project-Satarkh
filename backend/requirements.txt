@@ -5,6 +5,6 @@ opencv-python
 ultralytics
 numpy
 shapely
-face_recognition
+deepface
 easyocr
 python-multipart
