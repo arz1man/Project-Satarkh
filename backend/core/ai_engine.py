@@ -10,27 +10,18 @@ import threading
 
 class AIEngine:
     def __init__(self):
-        # Load YOLOv8 for object detection (Person=0, Vehicle classes=2,3,5,7)
-        self.model = YOLO('yolov8n.pt') 
-        
-        # Initialize EasyOCR for license plates
-        # Using CPU by default, can use GPU if VRAM allows
+        self.model = YOLO('yolov8n.pt')
         self.reader = easyocr.Reader(['en'], gpu=True)
-        
-        # Virtual Tripwire definition (Polygon or Line)
-        # Empty list means no tripwire is set yet
         self.tripwire_points = []
         self.tripwire_polygon = None
-        
-        # Target classes for perimeter breach (person, car, motorcycle, bus, truck)
         self.target_classes = [0, 2, 3, 5, 7]
-        
+        self.face_cache = {}
+        # Tracks which IDs have already fired a breach event (to avoid spam)
+        self.breach_fired = set()
+
     def set_tripwire(self, points):
-        """
-        Sets the virtual tripwire coordinates.
-        points: list of (x, y) tuples.
-        """
         self.tripwire_points = points
+        self.breach_fired = set()  # Reset on new zone
         if len(points) >= 3:
             self.tripwire_polygon = Polygon(points)
         elif len(points) == 2:
@@ -39,25 +30,15 @@ class AIEngine:
             self.tripwire_polygon = None
 
     def _check_breach(self, bbox, frame_shape):
-        """
-        Checks if the bounding box intersects the virtual tripwire.
-        Scales the raw bounding box down to the frontend UI's 1280x720 mapping.
-        """
         if not self.tripwire_polygon:
             return False
-            
         x1, y1, x2, y2 = bbox
         h, w = frame_shape[:2]
-        
         scale_x = 1280.0 / w
         scale_y = 720.0 / h
-        
         sx1, sy1 = x1 * scale_x, y1 * scale_y
         sx2, sy2 = x2 * scale_x, y2 * scale_y
-        
-        # Create a Polygon representing the object's bounding box
         bbox_poly = Polygon([(sx1, sy1), (sx2, sy1), (sx2, sy2), (sx1, sy2)])
-        
         if isinstance(self.tripwire_polygon, Polygon):
             return self.tripwire_polygon.intersects(bbox_poly)
         elif isinstance(self.tripwire_polygon, LineString):
@@ -66,32 +47,34 @@ class AIEngine:
 
     def _extract_license_plate(self, frame, bbox):
         x1, y1, x2, y2 = bbox
-        cropped_vehicle = frame[int(y1):int(y2), int(x1):int(x2)]
-        if cropped_vehicle.size == 0:
+        cropped = frame[int(y1):int(y2), int(x1):int(x2)]
+        if cropped.size == 0:
             return None
-        
-        results = self.reader.readtext(cropped_vehicle)
+        results = self.reader.readtext(cropped)
         if results:
-            # Return the highest confidence text
-            return results[0][1]
+            # Return highest-confidence result
+            best = max(results, key=lambda r: r[2])
+            if best[2] > 0.3:
+                return best[1].upper().strip()
         return None
 
     def _run_face_rec_thread(self, cropped_person, track_id):
-        """
-        Runs DeepFace in a background thread so it never freezes the video feed.
-        """
+        """Runs FaceNet in a background thread — never blocks the video feed."""
         try:
             if cropped_person.size == 0:
-                self.face_cache[track_id] = "Unknown"
+                self.face_cache[track_id] = "UNKNOWN"
                 return
-                
-            if not os.path.exists("registered_faces") or len(os.listdir("registered_faces")) == 0:
-                self.face_cache[track_id] = "Unregistered Target"
+            if not os.path.exists("registered_faces") or not any(
+                f.lower().endswith(('.jpg', '.jpeg', '.png'))
+                for f in os.listdir("registered_faces")
+            ):
+                self.face_cache[track_id] = "UNKNOWN"
                 return
-                
+
             dfs = DeepFace.find(
-                img_path=cropped_person, 
-                db_path="registered_faces", 
+                img_path=cropped_person,
+                db_path="registered_faces",
+                model_name="Facenet",
                 enforce_detection=False,
                 align=False,
                 silent=True,
@@ -99,90 +82,107 @@ class AIEngine:
             )
             if len(dfs) > 0 and len(dfs[0]) > 0:
                 matched_path = dfs[0].iloc[0]['identity']
-                filename = os.path.basename(matched_path)
-                name = os.path.splitext(filename)[0]
-                self.face_cache[track_id] = f"REGISTERED: {name}"
+                name = os.path.splitext(os.path.basename(matched_path))[0]
+                self.face_cache[track_id] = f"KNOWN:{name}"
             else:
-                self.face_cache[track_id] = "Unregistered Target"
+                self.face_cache[track_id] = "UNKNOWN"
         except Exception as e:
             print("Face check error:", e)
-            self.face_cache[track_id] = "Unknown"
+            self.face_cache[track_id] = "UNKNOWN"
 
     def process_frame(self, raw_frame, display_frame):
-        """
-        Runs the full AI pipeline on the frame.
-        """
         events = []
-        
-        # 1. Run YOLOv8 Tracking
+
         results = self.model.track(raw_frame, persist=True, classes=self.target_classes, verbose=False)
-        
+
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy()
             track_ids = results[0].boxes.id.int().cpu().tolist()
             class_ids = results[0].boxes.cls.int().cpu().tolist()
-            
+            class_names = {0: "PERSON", 2: "CAR", 3: "MOTORCYCLE", 5: "BUS", 7: "TRUCK"}
+
             for box, track_id, class_id in zip(boxes, track_ids, class_ids):
                 x1, y1, x2, y2 = map(int, box)
-                
-                # Check Tripwire Breach
                 is_breaching = self._check_breach((x1, y1, x2, y2), raw_frame.shape)
-                
-                color = (0, 0, 255) if is_breaching else (255, 0, 0)
-                cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
-                
-                label = f"ID: {track_id}"
-                
-                # If Person, run Face Rec once and cache it to the tracker ID
+
+                # --- FACE RECOGNITION (persons only, threaded) ---
                 face_status = None
                 if class_id == 0:
-                    if not hasattr(self, 'face_cache'):
-                        self.face_cache = {}
-                        
-                    if track_id not in self.face_cache or self.face_cache[track_id] == "Unknown":
-                        self.face_cache[track_id] = "Scanning..."
-                        t = threading.Thread(target=self._run_face_rec_thread, args=(raw_frame[int(y1):int(y2), int(x1):int(x2)].copy(), track_id))
-                        t.daemon = True
-                        t.start()
-                        
-                    face_status = self.face_cache[track_id]
-                    label += f" | {face_status}"
-                
-                if is_breaching:
-                    event_type = "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH"
-                    events.append({
-                        "id": track_id,
-                        "type": event_type,
-                        "timestamp": time.time()
-                    })
-                    
-                    if class_id == 0 and face_status:
-                        events[-1]["face"] = face_status
-                    
-                    # If Vehicle, try ALPR
-                    if class_id != 0:
-                        plate = self._extract_license_plate(raw_frame, box)
-                        if plate:
-                            label += f" | Plate: {plate}"
-                            events[-1]["plate"] = plate
-                
-                cv2.putText(display_frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    if track_id not in self.face_cache or self.face_cache[track_id] == "UNKNOWN":
+                        # Only kick off a new thread if not already scanning
+                        if self.face_cache.get(track_id) != "SCANNING":
+                            self.face_cache[track_id] = "SCANNING"
+                            t = threading.Thread(
+                                target=self._run_face_rec_thread,
+                                args=(raw_frame[y1:y2, x1:x2].copy(), track_id)
+                            )
+                            t.daemon = True
+                            t.start()
+                    face_status = self.face_cache.get(track_id, "SCANNING")
 
-        # Draw the tripwire on the display frame
+                # --- LICENSE PLATE (vehicles only, on breach) ---
+                plate = None
+                if class_id != 0 and is_breaching:
+                    plate = self._extract_license_plate(raw_frame, box)
+
+                # --- BOUNDING BOX COLOR ---
+                # Red = breaching, Yellow = known person, Blue = normal
+                if is_breaching:
+                    color = (0, 0, 255)   # Red
+                elif face_status and face_status.startswith("KNOWN"):
+                    color = (0, 255, 255) # Yellow
+                else:
+                    color = (255, 140, 0) # Blue/Orange
+
+                cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
+
+                # --- LABEL ---
+                obj_name = class_names.get(class_id, "OBJECT")
+                if face_status and face_status.startswith("KNOWN:"):
+                    name = face_status.split("KNOWN:")[1]
+                    label = f"{name} [KNOWN]"
+                elif face_status == "SCANNING":
+                    label = f"ID:{track_id} [SCANNING]"
+                elif face_status == "UNKNOWN":
+                    label = f"ID:{track_id} [UNKNOWN]"
+                else:
+                    label = f"{obj_name} #{track_id}"
+
+                if plate:
+                    label += f" | {plate}"
+
+                cv2.putText(display_frame, label, (x1, max(y1 - 10, 12)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+
+                # --- BREACH EVENTS ---
+                # Universal alarm: everyone triggers on breach — face rec is identification only
+                if is_breaching and track_id not in self.breach_fired:
+                    self.breach_fired.add(track_id)
+                    event = {
+                        "id": track_id,
+                        "type": "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH",
+                        "obj_class": obj_name,
+                        "timestamp": time.time(),
+                    }
+                    if face_status and face_status.startswith("KNOWN:"):
+                        event["face"] = face_status.split("KNOWN:")[1]
+                        event["identity"] = "KNOWN"
+                    elif face_status == "UNKNOWN":
+                        event["identity"] = "UNKNOWN INTRUDER"
+                    else:
+                        event["identity"] = "IDENTIFYING..."
+                    if plate:
+                        event["plate"] = plate
+                    events.append(event)
+
+        # --- DRAW TRIPWIRE ON FRAME ---
         if len(self.tripwire_points) > 1:
             h, w = raw_frame.shape[:2]
             scale_x = w / 1280.0
             scale_y = h / 720.0
-            
-            scaled_pts = []
-            for pt in self.tripwire_points:
-                scaled_pts.append([int(pt[0] * scale_x), int(pt[1] * scale_y)])
-                
-            pts = np.array(scaled_pts, np.int32)
-            pts = pts.reshape((-1, 1, 2))
-            if self.tripwire_polygon and isinstance(self.tripwire_polygon, Polygon):
-                cv2.polylines(display_frame, [pts], True, (0, 165, 255), 2) # Orange for tripwire
-            else:
-                cv2.polylines(display_frame, [pts], False, (0, 165, 255), 2)
+            scaled_pts = [[int(pt[0] * scale_x), int(pt[1] * scale_y)] for pt in self.tripwire_points]
+            pts = np.array(scaled_pts, np.int32).reshape((-1, 1, 2))
+            is_poly = isinstance(self.tripwire_polygon, Polygon)
+            cv2.polylines(display_frame, [pts], is_poly, (0, 165, 255), 2)
 
         return display_frame, events

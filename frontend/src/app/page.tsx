@@ -14,7 +14,10 @@ export default function Dashboard() {
   
   // Source State
   const [videoSource, setVideoSource] = useState('0');
-  
+  const [droidcamIp, setDroidcamIp] = useState('');
+  const [sourceMode, setSourceMode] = useState<'webcam'|'droidcam'|'file'>('webcam');
+  const videoFileRef = useRef<HTMLInputElement>(null);
+
   // Access Control State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
@@ -106,12 +109,26 @@ export default function Dashboard() {
     await fetch(`http://localhost:8000/api/nightvision?enabled=${newVal}`, { method: 'POST' });
   };
 
-  const changeSource = async () => {
-    await fetch(`http://localhost:8000/api/source`, { 
-      method: 'POST', 
+  const changeSource = async (src: string) => {
+    setVideoSource(src);
+    await fetch(`http://localhost:8000/api/source`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: videoSource }) 
+      body: JSON.stringify({ source: src })
     });
+  };
+
+  const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`http://localhost:8000/api/upload_video`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.path) changeSource(data.path);
   };
 
   // --- DRAGGING LOGIC ---
@@ -286,17 +303,29 @@ export default function Dashboard() {
               <span className="text-green-400 font-mono font-bold">SECURE DATABASE MANAGEMENT</span>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs">SOURCE:</span>
-                <input 
-                  type="text" 
-                  value={videoSource}
-                  onChange={e => setVideoSource(e.target.value)}
-                  placeholder="0 or path/to/video.mp4"
-                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white w-48 focus:outline-none"
-                />
-                <button onClick={changeSource} className="px-2 py-1 text-xs font-semibold rounded bg-blue-900/50 hover:bg-blue-900 text-blue-200 border border-blue-800">
-                  CONNECT
-                </button>
+                <span className="font-mono text-[10px] text-slate-500 uppercase">Source:</span>
+                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
+                <button
+                  onClick={() => { setSourceMode('webcam'); changeSource('0'); }}
+                  className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'webcam' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                >WEBCAM</button>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={droidcamIp}
+                    onChange={e => setDroidcamIp(e.target.value)}
+                    placeholder="192.168.x.x:4747"
+                    className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white w-36 focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => { setSourceMode('droidcam'); changeSource(`http://${droidcamIp}/video`); }}
+                    className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'droidcam' ? 'bg-green-700 border-green-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                  >DROIDCAM</button>
+                </div>
+                <button
+                  onClick={() => { setSourceMode('file'); videoFileRef.current?.click(); }}
+                  className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'file' ? 'bg-orange-700 border-orange-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                >📁 FOOTAGE</button>
               </div>
             )}
           </div>

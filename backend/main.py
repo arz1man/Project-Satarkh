@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # Global instances
-video_pipeline = VideoPipeline(source=0) 
+video_pipeline = VideoPipeline()  # Auto-detects demo.mp4 if present, else webcam
 ai_engine = AIEngine()
 
 active_connections: List[WebSocket] = []
@@ -82,6 +82,17 @@ def delete_face(filename: str):
     if os.path.exists(path):
         os.remove(path)
     return {"status": "success"}
+
+@app.post("/api/upload_video")
+async def upload_video(file: UploadFile = File(...)):
+    os.makedirs("uploaded_footage", exist_ok=True)
+    save_path = os.path.join("uploaded_footage", file.filename)
+    with open(save_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    # Immediately switch to this footage
+    video_pipeline.change_source(save_path)
+    return {"status": "success", "path": save_path}
 
 async def broadcast_event(event_data: dict):
     for connection in active_connections:

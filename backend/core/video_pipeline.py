@@ -1,81 +1,64 @@
 import cv2
 import numpy as np
+import os
+
+DEMO_VIDEO_PATH = "demo.mp4"
 
 class VideoPipeline:
-    def __init__(self, source=0):
-        """
-        source: 0 for webcam, or a string path to a video file / RTSP stream.
-        """
+    def __init__(self, source=None):
+        # Default: use demo.mp4 if it exists, else fall back to webcam
+        if source is None:
+            source = DEMO_VIDEO_PATH if os.path.exists(DEMO_VIDEO_PATH) else 0
         self.source = source
-        self._init_camera()
         self.night_vision_enabled = False
+        self._init_camera()
 
     def change_source(self, new_source):
         self.source = new_source
         if self.cap:
             self.cap.release()
         self._init_camera()
-        
+
     def _init_camera(self):
-        if isinstance(self.source, int) or (isinstance(self.source, str) and self.source.isdigit()):
-            # Use DirectShow on Windows for raw hardware access and MJPG for high bandwidth
-            self.cap = cv2.VideoCapture(int(self.source), cv2.CAP_DSHOW)
+        src = self.source
+        if isinstance(src, int) or (isinstance(src, str) and src.isdigit()):
+            # USB webcam — use DirectShow + MJPG for full 720p/1080p resolution on Windows
+            self.cap = cv2.VideoCapture(int(src), cv2.CAP_DSHOW)
             self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         else:
-            self.cap = cv2.VideoCapture(self.source)
-            
-        # Force OpenCV to request max resolution from the camera hardware
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-        
+            # File path or IP camera / RTSP — let OpenCV handle it natively
+            self.cap = cv2.VideoCapture(str(src))
+
     def set_night_vision(self, enabled: bool):
         self.night_vision_enabled = enabled
 
     def _apply_night_vision(self, frame):
-        """
-        Applies a green colormap to simulate night vision / thermal optics.
-        """
-        # Convert to grayscale to remove original colors
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        # Increase contrast for that tactical look
         gray = cv2.equalizeHist(gray)
-        
-        # Apply a green colormap (or any custom green mapping)
-        # COLORMAP_OCEAN has some green, but we can do it manually for a pure tactical green
-        # A simple way: create a blank green image and blend, or use applyColorMap
-        
-        # For a truly military night vision look, manual channel mapping works best:
         zeros = np.zeros_like(gray)
-        green_frame = cv2.merge([zeros, gray, zeros]) # B, G, R
-        
-        return green_frame
+        return cv2.merge([zeros, gray, zeros])
 
     def get_frame(self):
-        """
-        Reads the next frame from the stream.
-        Returns the raw frame (for AI processing) and the display frame (for UI).
-        """
-        if not self.cap.isOpened():
+        if not self.cap or not self.cap.isOpened():
             return None, None
-            
+
         success, frame = self.cap.read()
         if not success:
-            # If video ended, loop it (useful for pre-recorded demo)
-            if isinstance(self.source, str):
+            # Loop video file when it ends (great for demo footage)
+            if isinstance(self.source, str) and not self.source.isdigit():
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 success, frame = self.cap.read()
             if not success:
                 return None, None
-        
-        # Keep original high resolution (no downscaling)
-                
+
         display_frame = frame.copy()
-        
         if self.night_vision_enabled:
             display_frame = self._apply_night_vision(display_frame)
-            
+
         return frame, display_frame
 
     def release(self):
-        self.cap.release()
+        if self.cap:
+            self.cap.release()
