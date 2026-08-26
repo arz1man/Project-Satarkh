@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw, Download } from 'lucide-react';
+import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw, Download, Lock, UserPlus, Trash2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState([
@@ -10,8 +10,17 @@ export default function Dashboard() {
   const [audioMuted, setAudioMuted] = useState(false);
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary' | 'analytics'
+  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary' | 'analytics' | 'access'
   
+  // Source State
+  const [videoSource, setVideoSource] = useState('0');
+  
+  // Access Control State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [faces, setFaces] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // SOS State
   const [isBreaching, setIsBreaching] = useState(false);
   
@@ -73,10 +82,23 @@ export default function Dashboard() {
     return () => ws.close();
   }, [audioMuted]);
 
+  // Fetch faces when authenticated
+  useEffect(() => {
+    if (isAuthenticated) fetchFaces();
+  }, [isAuthenticated]);
+
   const toggleNightVision = async () => {
     const newVal = !nightVision;
     setNightVision(newVal);
     await fetch(`http://localhost:8000/api/nightvision?enabled=${newVal}`, { method: 'POST' });
+  };
+
+  const changeSource = async () => {
+    await fetch(`http://localhost:8000/api/source`, { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: videoSource }) 
+    });
   };
 
   // --- DRAGGING LOGIC ---
@@ -146,6 +168,40 @@ export default function Dashboard() {
     downloadAnchorNode.remove();
   };
 
+  // --- ACCESS CONTROL METHODS ---
+  const handleAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcode === '1234') {
+      setIsAuthenticated(true);
+    } else {
+      alert("INVALID PASSCODE");
+      setPasscode('');
+    }
+  };
+
+  const fetchFaces = async () => {
+    const res = await fetch(`http://localhost:8000/api/faces`);
+    const data = await res.json();
+    setFaces(data.faces);
+  };
+
+  const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    await fetch(`http://localhost:8000/api/faces`, {
+      method: 'POST',
+      body: formData
+    });
+    fetchFaces();
+  };
+
+  const deleteFace = async (filename: string) => {
+    await fetch(`http://localhost:8000/api/faces/${filename}`, { method: 'DELETE' });
+    fetchFaces();
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-200">
       
@@ -174,11 +230,14 @@ export default function Dashboard() {
           >
             <ChartColumn size={18} /> Analytics
           </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
-            <Cctv size={18} /> Cameras
+          <a 
+            onClick={() => setActiveTab('access')}
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'access' ? 'bg-green-500/10 text-green-400' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <Lock size={18} /> Access Control
           </a>
           <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
-            <BellRing size={18} /> Alerts Archive
+            <Cctv size={18} /> Cameras
           </a>
         </nav>
         <div className="p-4 border-t border-slate-800">
@@ -202,11 +261,22 @@ export default function Dashboard() {
               <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - DRAG CORNERS TO EDIT ZONE</span>
             ) : activeTab === 'analytics' ? (
               <span className="text-purple-400 font-mono font-bold">SYSTEM ANALYTICS & INTELLIGENCE</span>
+            ) : activeTab === 'access' ? (
+              <span className="text-green-400 font-mono font-bold">SECURE DATABASE MANAGEMENT</span>
             ) : (
-              <>
-                <span>Active Feeds: 1</span>
-                <span>Storage: 84%</span>
-              </>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs">SOURCE:</span>
+                <input 
+                  type="text" 
+                  value={videoSource}
+                  onChange={e => setVideoSource(e.target.value)}
+                  placeholder="0 or path/to/video.mp4"
+                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white w-48 focus:outline-none"
+                />
+                <button onClick={changeSource} className="px-2 py-1 text-xs font-semibold rounded bg-blue-900/50 hover:bg-blue-900 text-blue-200 border border-blue-800">
+                  CONNECT
+                </button>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -236,7 +306,71 @@ export default function Dashboard() {
         <div className="flex-1 p-6 flex gap-6 overflow-hidden">
           
           {/* Main Area based on Tab */}
-          {activeTab === 'analytics' ? (
+          {activeTab === 'access' ? (
+            <div className="flex-1 flex flex-col items-center justify-center">
+              {!isAuthenticated ? (
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl flex flex-col items-center gap-4">
+                  <Lock size={48} className="text-slate-500 mb-4" />
+                  <h2 className="text-xl font-bold font-mono text-white">SECURE DATABASE ACCESS</h2>
+                  <p className="text-sm text-slate-400 mb-4">Enter passcode to view registered personnel</p>
+                  <form onSubmit={handleAuth} className="flex gap-2">
+                    <input 
+                      type="password" 
+                      value={passcode}
+                      onChange={e => setPasscode(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded px-4 py-2 text-center tracking-[0.5em] font-mono focus:outline-none focus:border-blue-500"
+                      placeholder="****"
+                      autoFocus
+                    />
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold">
+                      VERIFY
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="w-full max-w-4xl h-full flex flex-col gap-6">
+                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                    <div>
+                      <h2 className="text-xl font-bold font-mono text-white">REGISTERED PERSONNEL</h2>
+                      <p className="text-sm text-slate-400">Manage faces for DeepFace recognition</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      ref={fileInputRef}
+                      onChange={handleFaceUpload}
+                    />
+                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold text-sm">
+                      <UserPlus size={16} /> ADD PERSON
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-6 overflow-y-auto">
+                    {faces.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-500 font-mono text-sm">
+                        NO PERSONNEL REGISTERED
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-4">
+                        {faces.map((f, i) => (
+                          <div key={i} className="border border-slate-800 rounded-lg p-4 flex flex-col items-center justify-between gap-4 bg-slate-950">
+                            <div className="size-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
+                              <span className="text-slate-500 font-bold">{f.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <span className="text-xs font-mono text-slate-300 truncate w-full text-center">{f}</span>
+                            <button onClick={() => deleteFace(f)} className="flex items-center gap-1 text-red-500 hover:text-red-400 text-xs mt-2">
+                              <Trash2 size={12} /> REMOVE
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'analytics' ? (
             <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
               <div className="grid grid-cols-3 gap-6">
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">

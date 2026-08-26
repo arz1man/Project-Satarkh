@@ -9,6 +9,12 @@ class VideoPipeline:
         self.source = source
         self.cap = cv2.VideoCapture(self.source)
         self.night_vision_enabled = False
+
+    def change_source(self, new_source):
+        self.source = new_source
+        if self.cap:
+            self.cap.release()
+        self.cap = cv2.VideoCapture(self.source)
         
     def set_night_vision(self, enabled: bool):
         self.night_vision_enabled = enabled

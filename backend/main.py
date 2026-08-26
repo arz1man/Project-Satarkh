@@ -1,7 +1,8 @@
 import asyncio
 import cv2
+import os
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -9,6 +10,9 @@ from typing import List, Tuple
 
 from core.video_pipeline import VideoPipeline
 from core.ai_engine import AIEngine
+
+# Ensure faces dir exists
+os.makedirs("registered_faces", exist_ok=True)
 
 app = FastAPI(title="Project Satark - Backend API")
 
@@ -21,15 +25,16 @@ app.add_middleware(
 )
 
 # Global instances
-# For demo, using 0 (webcam). If you have an mp4, change it here.
 video_pipeline = VideoPipeline(source=0) 
 ai_engine = AIEngine()
 
-# Active WebSocket connections for events
 active_connections: List[WebSocket] = []
 
 class TripwireConfig(BaseModel):
     points: List[Tuple[int, int]]
+
+class SourceConfig(BaseModel):
+    source: str
 
 @app.get("/")
 def read_root():
@@ -38,12 +43,38 @@ def read_root():
 @app.post("/api/tripwire")
 def set_tripwire(config: TripwireConfig):
     ai_engine.set_tripwire(config.points)
-    return {"status": "success", "points": config.points}
+    return {"status": "success"}
 
 @app.post("/api/nightvision")
 def toggle_nightvision(enabled: bool):
     video_pipeline.set_night_vision(enabled)
-    return {"status": "success", "night_vision": enabled}
+    return {"status": "success"}
+
+@app.post("/api/source")
+def change_source(config: SourceConfig):
+    src = int(config.source) if config.source.isdigit() else config.source
+    video_pipeline.change_source(src)
+    return {"status": "success", "source": src}
+
+@app.get("/api/faces")
+def get_faces():
+    files = os.listdir("registered_faces")
+    return {"faces": files}
+
+@app.post("/api/faces")
+async def add_face(file: UploadFile = File(...)):
+    path = os.path.join("registered_faces", file.filename)
+    with open(path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    return {"status": "success", "filename": file.filename}
+
+@app.delete("/api/faces/{filename}")
+def delete_face(filename: str):
+    path = os.path.join("registered_faces", filename)
+    if os.path.exists(path):
+        os.remove(path)
+    return {"status": "success"}
 
 async def broadcast_event(event_data: dict):
     for connection in active_connections:

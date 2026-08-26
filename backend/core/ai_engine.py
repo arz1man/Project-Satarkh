@@ -78,13 +78,21 @@ class AIEngine:
             return "Unknown"
             
         try:
-            # We would compare against a 'db_path' in a real scenario
-            # dfs = DeepFace.find(img_path = cropped_person, db_path = "registered_faces", enforce_detection=False)
-            # return dfs[0] if len(dfs) > 0 else "Unregistered"
+            # Check if there are actually files in the db_path to avoid DeepFace errors
+            if not os.path.exists("registered_faces") or len(os.listdir("registered_faces")) == 0:
+                return "Unregistered Target"
+                
+            dfs = DeepFace.find(img_path = cropped_person, db_path = "registered_faces", enforce_detection=False, silent=True)
+            if len(dfs) > 0 and len(dfs[0]) > 0:
+                # Get the matched filename without extension
+                matched_path = dfs[0].iloc[0]['identity']
+                filename = os.path.basename(matched_path)
+                name = os.path.splitext(filename)[0]
+                return f"REGISTERED: {name}"
             
-            # Placeholder for now
             return "Unregistered Target"
-        except:
+        except Exception as e:
+            print("Face check error:", e)
             return "Unknown"
 
     def process_frame(self, raw_frame, display_frame):
