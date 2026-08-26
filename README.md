@@ -1,9 +1,5 @@
 # Project Satarkh: Intelligent Border Video Analytics Platform
 
- ___    _  _____  _  ___  _  __ _  _ 
-/ __|  /_\|_   _|/_\| _ \| |/ /| || |
-\__ \ / _ \ | | / _ \   /| ' < | __ |
-|___//_/ \_\|_|/_/ \_\_|_\|_|\_\|_||_|
 SIH 2026 Submission | Ministry of Home Affairs (MHA) | PS ID: SIH26187
 
 An autonomous, edge-deployed computer vision platform designed to transform legacy CCTV infrastructure into a real-time, intelligent perimeter defense network. Built for high-reliability threat detection in zero-trust and restricted-bandwidth environments.
@@ -24,21 +20,8 @@ Core Capabilities
 
 [+] Tactical Vision Mode: Synthetic image enhancement for low-light and high-noise environments.
 
-System Architecture
-Plaintext
-[ Legacy CCTV Feed / RTSP ]
-           │
-           ▼
-[ Frame Buffer & Pre-processing (OpenCV) ]
-           │
-           ▼
-[ Inference Engine (YOLOv8 / TensorRT) ] ──▶ [ Tracking Algorithm (ByteTrack) ]
-           │
-           ▼
-[ Spatial Logic (Geofence Intersection) ]
-           │
-           ▼
-[ Alert Dispatcher & UI Controller (FastAPI / Frontend) ]
+<img width="715" height="387" alt="image" src="https://github.com/user-attachments/assets/161d2f84-6c89-4986-bacf-abcfc069c934" />
+
 
 Tech Stack & Requirements
 Inference & Backend (Local GPU)
