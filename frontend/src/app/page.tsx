@@ -31,7 +31,7 @@ export default function Dashboard() {
     { x: 1160, y: 650 },
     { x: 120, y: 650 }
   ];
-  const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>(defaultZone);
+  const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const breachTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,7 +58,7 @@ export default function Dashboard() {
   // Sync saved zone on mount
   useEffect(() => {
     const saved = localStorage.getItem('satark_zone');
-    const pointsToUse = saved ? JSON.parse(saved) : defaultZone;
+    const pointsToUse = saved ? JSON.parse(saved) : [];
     setDrawPoints(pointsToUse);
     
     fetch(`http://localhost:8000/api/tripwire`, {
