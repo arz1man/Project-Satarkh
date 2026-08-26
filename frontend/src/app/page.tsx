@@ -4,7 +4,7 @@ import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Chec
 
 export default function Dashboard() {
   const [events, setEvents] = useState([
-    { id: 'SYS', type: 'SYSTEM_START', time: new Date().toLocaleTimeString(), threat: 'NONE', label: 'System initialized' }
+    { id: 'SYS', type: 'SYSTEM_START', time: 'INITIALIZING', threat: 'NONE', label: 'System initialized' }
   ]);
   const [nightVision, setNightVision] = useState(false);
   const [audioMuted, setAudioMuted] = useState(false);
