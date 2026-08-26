@@ -6,6 +6,7 @@ import easyocr
 from deepface import DeepFace
 import time
 import os
+import threading
 
 class AIEngine:
     def __init__(self):
@@ -75,20 +76,18 @@ class AIEngine:
             return results[0][1]
         return None
 
-    def _check_face(self, frame, bbox):
+    def _run_face_rec_thread(self, cropped_person, track_id):
         """
-        Runs DeepFace to verify if the face is in the registered database.
-        (For MVP, we just detect if a face exists in the bbox).
+        Runs DeepFace in a background thread so it never freezes the video feed.
         """
-        x1, y1, x2, y2 = bbox
-        cropped_person = frame[int(y1):int(y2), int(x1):int(x2)]
-        if cropped_person.size == 0:
-            return "Unknown"
-            
         try:
-            # Check if there are actually files in the db_path to avoid DeepFace errors
+            if cropped_person.size == 0:
+                self.face_cache[track_id] = "Unknown"
+                return
+                
             if not os.path.exists("registered_faces") or len(os.listdir("registered_faces")) == 0:
-                return "Unregistered Target"
+                self.face_cache[track_id] = "Unregistered Target"
+                return
                 
             dfs = DeepFace.find(
                 img_path=cropped_person, 
@@ -99,16 +98,15 @@ class AIEngine:
                 detector_backend="skip"
             )
             if len(dfs) > 0 and len(dfs[0]) > 0:
-                # Get the matched filename without extension
                 matched_path = dfs[0].iloc[0]['identity']
                 filename = os.path.basename(matched_path)
                 name = os.path.splitext(filename)[0]
-                return f"REGISTERED: {name}"
-            
-            return "Unregistered Target"
+                self.face_cache[track_id] = f"REGISTERED: {name}"
+            else:
+                self.face_cache[track_id] = "Unregistered Target"
         except Exception as e:
             print("Face check error:", e)
-            return "Unknown"
+            self.face_cache[track_id] = "Unknown"
 
     def process_frame(self, raw_frame, display_frame):
         """
@@ -142,7 +140,10 @@ class AIEngine:
                         self.face_cache = {}
                         
                     if track_id not in self.face_cache or self.face_cache[track_id] == "Unknown":
-                        self.face_cache[track_id] = self._check_face(raw_frame, box)
+                        self.face_cache[track_id] = "Scanning..."
+                        t = threading.Thread(target=self._run_face_rec_thread, args=(raw_frame[int(y1):int(y2), int(x1):int(x2)].copy(), track_id))
+                        t.daemon = True
+                        t.start()
                         
                     face_status = self.face_cache[track_id]
                     label += f" | {face_status}"
