@@ -8,6 +8,9 @@ class VideoPipeline:
         """
         self.source = source
         self.cap = cv2.VideoCapture(self.source)
+        # Force OpenCV to request max resolution from the camera hardware
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         self.night_vision_enabled = False
 
     def change_source(self, new_source):
@@ -15,6 +18,8 @@ class VideoPipeline:
         if self.cap:
             self.cap.release()
         self.cap = cv2.VideoCapture(self.source)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         
     def set_night_vision(self, enabled: bool):
         self.night_vision_enabled = enabled
