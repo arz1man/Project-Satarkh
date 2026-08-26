@@ -61,6 +61,7 @@ def toggle_nightvision(enabled: bool):
 def change_source(config: SourceConfig):
     src = int(config.source) if config.source.isdigit() else config.source
     video_pipeline.change_source(src)
+    ai_engine.reset_tracking()  # Clear stale track IDs from previous source
     return {"status": "success", "source": src}
 
 @app.get("/api/faces")

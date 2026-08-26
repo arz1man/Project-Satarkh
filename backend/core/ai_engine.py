@@ -19,6 +19,15 @@ class AIEngine:
         self.plate_cache = {}
         self.breach_fired = set()
 
+    def reset_tracking(self):
+        """Call this whenever the video source changes to clear all stale track state."""
+        self.face_cache = {}
+        self.plate_cache = {}
+        self.breach_fired = set()
+        # Reinitialize YOLO model to clear its internal tracker state
+        self.model = YOLO('yolov8n.pt')
+        print("AI Engine: tracking state reset.")
+
     def set_tripwire(self, points):
         self.tripwire_points = points
         self.breach_fired = set()  # Reset on new zone
