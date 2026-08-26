@@ -40,7 +40,7 @@ class AIEngine:
     def _check_breach(self, bbox, frame_shape):
         """
         Checks if the bounding box intersects the virtual tripwire.
-        Scales the raw bounding box down to the frontend UI's 640x480 mapping.
+        Scales the raw bounding box down to the frontend UI's 1280x720 mapping.
         """
         if not self.tripwire_polygon:
             return False
@@ -48,8 +48,8 @@ class AIEngine:
         x1, y1, x2, y2 = bbox
         h, w = frame_shape[:2]
         
-        scale_x = 640.0 / w
-        scale_y = 480.0 / h
+        scale_x = 1280.0 / w
+        scale_y = 720.0 / h
         
         sx1, sy1 = x1 * scale_x, y1 * scale_y
         sx2, sy2 = x2 * scale_x, y2 * scale_y
@@ -154,8 +154,8 @@ class AIEngine:
         # Draw the tripwire on the display frame
         if len(self.tripwire_points) > 1:
             h, w = raw_frame.shape[:2]
-            scale_x = w / 640.0
-            scale_y = h / 480.0
+            scale_x = w / 1280.0
+            scale_y = h / 720.0
             
             scaled_pts = []
             for pt in self.tripwire_points:

@@ -24,12 +24,12 @@ export default function Dashboard() {
   // SOS State
   const [isBreaching, setIsBreaching] = useState(false);
   
-  // Boundary Drawing State
+  // Boundary Drawing State (Updated for 1280x720 16:9 native scale)
   const defaultZone = [
-    { x: 150, y: 250 },
-    { x: 490, y: 250 },
-    { x: 580, y: 420 },
-    { x: 60, y: 420 }
+    { x: 300, y: 350 },
+    { x: 980, y: 350 },
+    { x: 1160, y: 650 },
+    { x: 120, y: 650 }
   ];
   const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>(defaultZone);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
@@ -55,12 +55,16 @@ export default function Dashboard() {
     } catch(e) {}
   };
 
-  // Sync default zone on mount
+  // Sync saved zone on mount
   useEffect(() => {
+    const saved = localStorage.getItem('satark_zone');
+    const pointsToUse = saved ? JSON.parse(saved) : defaultZone;
+    setDrawPoints(pointsToUse);
+    
     fetch(`http://localhost:8000/api/tripwire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points: defaultZone.map(p => [p.x, p.y]) })
+      body: JSON.stringify({ points: pointsToUse.map((p: any) => [p.x, p.y]) })
     }).catch(e => console.log("Backend not ready yet"));
   }, []);
 
@@ -117,8 +121,9 @@ export default function Dashboard() {
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     
-    const scaleX = 640 / rect.width;
-    const scaleY = 480 / rect.height;
+    // Scale mapping updated for 1280x720 native 16:9 viewbox
+    const scaleX = 1280 / rect.width;
+    const scaleY = 720 / rect.height;
     return {
       x: Math.round((clientX - rect.left) * scaleX),
       y: Math.round((clientY - rect.top) * scaleY)
@@ -145,6 +150,7 @@ export default function Dashboard() {
   };
 
   const saveBoundary = async () => {
+    localStorage.setItem('satark_zone', JSON.stringify(drawPoints));
     const points = drawPoints.map(p => [p.x, p.y]);
     await fetch(`http://localhost:8000/api/tripwire`, {
       method: 'POST',
@@ -156,6 +162,7 @@ export default function Dashboard() {
 
   const resetBoundary = () => {
     setDrawPoints(defaultZone);
+    localStorage.removeItem('satark_zone');
   };
 
   const clearBoundary = async () => {
@@ -439,7 +446,7 @@ export default function Dashboard() {
                   <svg 
                     ref={svgRef}
                     className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-20" 
-                    viewBox="0 0 640 480" 
+                    viewBox="0 0 1280 720" 
                     preserveAspectRatio="xMidYMid meet"
                     onMouseMove={handlePointerMove}
                     onMouseUp={handlePointerUp}
