@@ -53,6 +53,11 @@ class VideoPipeline:
             if not success:
                 return None, None
 
+        # FORCE RESIZE TO 1280x720
+        # This guarantees a perfect 16:9 aspect ratio so the frontend SVG viewBox
+        # perfectly aligns with the video pixels, preventing coordinate drift on 4:3 webcams.
+        frame = cv2.resize(frame, (1280, 720))
+
         display_frame = frame.copy()
         if self.night_vision_enabled:
             display_frame = self._apply_night_vision(display_frame)
