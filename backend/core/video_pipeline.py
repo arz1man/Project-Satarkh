@@ -7,17 +7,24 @@ class VideoPipeline:
         source: 0 for webcam, or a string path to a video file / RTSP stream.
         """
         self.source = source
-        self.cap = cv2.VideoCapture(self.source)
-        # Force OpenCV to request max resolution from the camera hardware
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        self._init_camera()
         self.night_vision_enabled = False
 
     def change_source(self, new_source):
         self.source = new_source
         if self.cap:
             self.cap.release()
-        self.cap = cv2.VideoCapture(self.source)
+        self._init_camera()
+        
+    def _init_camera(self):
+        if isinstance(self.source, int) or (isinstance(self.source, str) and self.source.isdigit()):
+            # Use DirectShow on Windows for raw hardware access and MJPG for high bandwidth
+            self.cap = cv2.VideoCapture(int(self.source), cv2.CAP_DSHOW)
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        else:
+            self.cap = cv2.VideoCapture(self.source)
+            
+        # Force OpenCV to request max resolution from the camera hardware
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         
