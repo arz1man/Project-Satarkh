@@ -178,6 +178,13 @@ class AIEngine:
                 cv2.putText(display_frame, label, (x1, max(y1 - 10, 12)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
 
+                # Draw ground contact dot (perspective-correct point used for zone detection)
+                foot_x = (x1 + x2) // 2
+                foot_y = y2
+                dot_color = (0, 0, 255) if is_breaching else (0, 255, 0)
+                cv2.circle(display_frame, (foot_x, foot_y), 5, dot_color, -1)
+                cv2.circle(display_frame, (foot_x, foot_y), 8, (255, 255, 255), 1)
+
                 # --- BREACH EVENTS ---
                 # Universal alarm: everyone triggers on breach — face rec is identification only
                 if is_breaching and track_id not in self.breach_fired:
