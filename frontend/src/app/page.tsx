@@ -180,9 +180,14 @@ export default function Dashboard() {
   };
 
   const fetchFaces = async () => {
-    const res = await fetch(`http://localhost:8000/api/faces`);
-    const data = await res.json();
-    setFaces(data.faces);
+    try {
+      const res = await fetch(`http://localhost:8000/api/faces`);
+      const data = await res.json();
+      setFaces(data.faces || []);
+    } catch (err) {
+      console.error("Failed to fetch faces", err);
+      setFaces([]);
+    }
   };
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
