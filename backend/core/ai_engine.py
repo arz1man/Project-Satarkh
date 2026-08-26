@@ -93,9 +93,10 @@ class AIEngine:
             dfs = DeepFace.find(
                 img_path=cropped_person, 
                 db_path="registered_faces", 
-                enforce_detection=False, 
+                enforce_detection=False,
+                align=False,
                 silent=True,
-                detector_backend="mtcnn"
+                detector_backend="skip"
             )
             if len(dfs) > 0 and len(dfs[0]) > 0:
                 # Get the matched filename without extension
