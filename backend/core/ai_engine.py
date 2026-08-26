@@ -30,19 +30,32 @@ class AIEngine:
             self.tripwire_polygon = None
 
     def _check_breach(self, bbox, frame_shape):
+        """
+        Checks if the object's ground contact point (bottom-center of bbox)
+        is inside the virtual tripwire zone. Using bottom-center is perspective-correct
+        since it represents where the person/vehicle actually touches the ground.
+        """
         if not self.tripwire_polygon:
             return False
+
         x1, y1, x2, y2 = bbox
         h, w = frame_shape[:2]
+
+        # Scale to the 1280x720 coordinate system used by the frontend SVG
         scale_x = 1280.0 / w
         scale_y = 720.0 / h
-        sx1, sy1 = x1 * scale_x, y1 * scale_y
-        sx2, sy2 = x2 * scale_x, y2 * scale_y
-        bbox_poly = Polygon([(sx1, sy1), (sx2, sy1), (sx2, sy2), (sx1, sy2)])
+
+        # Bottom-center = ground contact point (perspective-correct)
+        foot_x = ((x1 + x2) / 2) * scale_x
+        foot_y = y2 * scale_y
+
+        ground_point = Point(foot_x, foot_y)
+
         if isinstance(self.tripwire_polygon, Polygon):
-            return self.tripwire_polygon.intersects(bbox_poly)
+            return self.tripwire_polygon.contains(ground_point)
         elif isinstance(self.tripwire_polygon, LineString):
-            return self.tripwire_polygon.intersects(bbox_poly)
+            # For a line, check if the point is within 5px of the line
+            return self.tripwire_polygon.distance(ground_point) < 5
         return False
 
     def _extract_license_plate(self, frame, bbox):
