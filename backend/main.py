@@ -119,8 +119,8 @@ def generate_frames():
             for evt in events:
                 asyncio.run_coroutine_threadsafe(broadcast_event(evt), main_loop)
         
-        # Encode frame as JPEG
-        ret, buffer = cv2.imencode('.jpg', processed_frame)
+        # Encode frame as JPEG with high quality
+        ret, buffer = cv2.imencode('.jpg', processed_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
         frame_bytes = buffer.tobytes()
         
         # Yield for MJPEG stream

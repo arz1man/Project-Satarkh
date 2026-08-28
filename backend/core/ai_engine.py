@@ -126,10 +126,10 @@ class AIEngine:
                 dfs = DeepFace.find(
                     img_path=cropped,
                     db_path="registered_faces",
-                    detector_backend="skip",
-                    align=False,
-                    model_name="Facenet",
-                    enforce_detection=False,
+                    detector_backend="yolov8",
+                    align=True,
+                    model_name="Facenet512",
+                    enforce_detection=True,
                     silent=True
                 )
                 if len(dfs) > 0 and not dfs[0].empty:
@@ -145,7 +145,8 @@ class AIEngine:
     def process_frame(self, raw_frame, display_frame):
         events = []
 
-        results = self.model.track(raw_frame, persist=True, classes=self.target_classes, verbose=False)
+        with self.lock:
+            results = self.model.track(raw_frame, persist=True, tracker="bytetrack.yaml", classes=self.target_classes, verbose=False)
 
         if results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy()
