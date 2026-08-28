@@ -1,115 +1,89 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import { MonitorPlay, PenTool, Cctv, BellRing, ChartColumn, ShieldAlert, X, Check, RotateCcw, Download, Lock, UserPlus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { ShieldAlert, Crosshair, Users, Activity, Settings, Video, FileVideo, Save, RotateCcw, Trash2, Shield, UploadCloud, Download, Plus, Clock, Terminal } from 'lucide-react';
 
-export default function Dashboard() {
-  const [events, setEvents] = useState([
-    { id: 'SYS', type: 'SYSTEM_START', time: 'INITIALIZING', threat: 'NONE', label: 'System initialized' }
-  ]);
-  const [nightVision, setNightVision] = useState(false);
-  const [audioMuted, setAudioMuted] = useState(false);
-  
-  // Navigation State
-  const [activeTab, setActiveTab] = useState('monitor'); // 'monitor' | 'boundary' | 'analytics' | 'access'
-  
-  // Source State
-  const [videoSource, setVideoSource] = useState('0');
-  const [sourceMode, setSourceMode] = useState<'webcam'|'file'>('file');
+export default function Home() {
+  const svgRef = useRef<SVGSVGElement>(null);
   const videoFileRef = useRef<HTMLInputElement>(null);
+  const faceFileRef = useRef<HTMLInputElement>(null);
 
-  // Access Control State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passcode, setPasscode] = useState('');
-  const [faces, setFaces] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // SOS State
-  const [isBreaching, setIsBreaching] = useState(false);
+  // Layout & Global State
+  const [currentTime, setCurrentTime] = useState('');
   
-  // Boundary Drawing State (Updated for 1280x720 16:9 native scale)
+  // Video Source
+  const [videoSource, setVideoSource] = useState('file');
+  const [nightVision, setNightVision] = useState(false);
+  
+  // Tripwire State
+  const [boundaryMode, setBoundaryMode] = useState(false);
   const defaultZone = [
-    { x: 300, y: 350 },
-    { x: 980, y: 350 },
-    { x: 1160, y: 650 },
-    { x: 120, y: 650 }
+    { x: 300, y: 500 },
+    { x: 980, y: 500 },
+    { x: 1100, y: 650 },
+    { x: 180, y: 650 }
   ];
   const [drawPoints, setDrawPoints] = useState<{x: number, y: number}[]>([]);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const breachTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Play Tactical Beep using Web Audio API
-  const playAlarm = () => {
-    if (audioMuted) return;
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1);
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      osc.start();
-      gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
-      osc.stop(ctx.currentTime + 0.5);
-    } catch(e) {}
-  };
+  // Events & Telemetry
+  const [events, setEvents] = useState<any[]>([]);
+  const [isBreaching, setIsBreaching] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const latestEventRef = useRef<any>(null);
 
-  // Sync saved zone on mount
+  // Database
+  const [faces, setFaces] = useState<string[]>([]);
+
+  // Clock
   useEffect(() => {
-    const saved = localStorage.getItem('satark_zone');
-    const pointsToUse = saved ? JSON.parse(saved) : [];
-    setDrawPoints(pointsToUse);
-    
-    fetch(`http://localhost:8000/api/tripwire`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points: pointsToUse.map((p: any) => [p.x, p.y]) })
-    }).catch(e => console.log("Backend not ready yet"));
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour12: false }) + ' L');
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  // WebSocket for real events
+  // Initialization & WebSocket
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/events');
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const isCritical = data.type.includes('BREACH');
-      
-      setEvents(prev => [{
-        id: data.id.toString(),
-        type: data.type,
-        time: new Date(data.timestamp * 1000).toLocaleTimeString(),
-        threat: isCritical ? 'CRITICAL' : 'WARNING',
-        label: `Obj #${data.id} ${data.plate ? '| Plate: '+data.plate : ''} ${data.face ? '| Face: '+data.face : ''}`
-      }, ...prev].slice(0, 100));
+    fetchFaces();
+    const saved = localStorage.getItem('satark_zone');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setDrawPoints(parsed);
+      fetch(`http://localhost:8000/api/tripwire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: parsed.map((p: any) => [p.x, p.y]) })
+      });
+    } else {
+      setDrawPoints(defaultZone);
+      fetch(`http://localhost:8000/api/tripwire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: defaultZone.map(p => [p.x, p.y]) })
+      });
+    }
 
-      if (isCritical) {
-        setIsBreaching(true);
-        playAlarm();
-        if (breachTimeoutRef.current) clearTimeout(breachTimeoutRef.current);
-        breachTimeoutRef.current = setTimeout(() => {
-          setIsBreaching(false);
-        }, 2000);
-      }
+    const connectWS = () => {
+      const ws = new WebSocket('ws://localhost:8000/ws/events');
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'HEARTBEAT') {
+          setIsBreaching(data.is_breaching);
+        } else if (data.type === 'ALERT') {
+          setEvents(prev => [data.data, ...prev].slice(0, 50));
+          latestEventRef.current = data.data;
+        }
+      };
+      ws.onclose = () => setTimeout(connectWS, 2000);
+      wsRef.current = ws;
     };
-    return () => ws.close();
-  }, [audioMuted]);
+    connectWS();
+    return () => wsRef.current?.close();
+  }, []);
 
-  // Fetch faces when authenticated
-  useEffect(() => {
-    if (isAuthenticated) fetchFaces();
-  }, [isAuthenticated]);
-
-  const toggleNightVision = async () => {
-    const newVal = !nightVision;
-    setNightVision(newVal);
-    await fetch(`http://localhost:8000/api/nightvision?enabled=${newVal}`, { method: 'POST' });
-  };
-
-  const changeSource = async (src: string) => {
-    setVideoSource(src);
+  // Source Switching
+  const changeSource = async (src: string, mode: string) => {
+    setVideoSource(mode);
     try {
       await fetch(`http://localhost:8000/api/source`, {
         method: 'POST',
@@ -117,31 +91,43 @@ export default function Dashboard() {
         body: JSON.stringify({ source: src })
       });
     } catch (e) {
-      console.warn("Source change fetch failed, backend might be restarting:", e);
+      console.warn("Source change fetch failed:", e);
     }
   };
 
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
     const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`http://localhost:8000/api/upload_video`, {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    if (data.path) changeSource(data.path);
+    formData.append('file', e.target.files[0]);
+    try {
+      const res = await fetch(`http://localhost:8000/api/upload_video`, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.path) changeSource(data.path, 'file');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // --- DRAGGING LOGIC ---
+  const toggleNightVision = async () => {
+    const newState = !nightVision;
+    setNightVision(newState);
+    try {
+      await fetch(`http://localhost:8000/api/nightvision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newState })
+      });
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  // Boundary Logic
   const getMousePos = (e: React.MouseEvent | React.TouchEvent) => {
     if (!svgRef.current) return { x: 0, y: 0 };
     const rect = svgRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    
-    // Scale mapping updated for 1280x720 native 16:9 viewbox
     const scaleX = 1280 / rect.width;
     const scaleY = 720 / rect.height;
     return {
@@ -151,12 +137,13 @@ export default function Dashboard() {
   };
 
   const handlePointerDown = (idx: number, e: React.MouseEvent | React.TouchEvent) => {
+    if (!boundaryMode) return;
     e.stopPropagation();
     setDraggingIdx(idx);
   };
 
   const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (draggingIdx === null) return;
+    if (draggingIdx === null || !boundaryMode) return;
     const { x, y } = getMousePos(e);
     setDrawPoints(prev => {
       const newPoints = [...prev];
@@ -170,14 +157,13 @@ export default function Dashboard() {
   };
 
   const saveBoundary = async () => {
+    setBoundaryMode(false);
     localStorage.setItem('satark_zone', JSON.stringify(drawPoints));
-    const points = drawPoints.map(p => [p.x, p.y]);
     await fetch(`http://localhost:8000/api/tripwire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points })
+      body: JSON.stringify({ points: drawPoints.map(p => [p.x, p.y]) })
     });
-    setActiveTab('monitor');
   };
 
   const resetBoundary = () => {
@@ -185,56 +171,22 @@ export default function Dashboard() {
     localStorage.removeItem('satark_zone');
   };
 
-  const clearBoundary = async () => {
-    setDrawPoints([]);
-    await fetch(`http://localhost:8000/api/tripwire`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points: [] })
-    });
-  };
-
-  const exportLogs = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "satark_logs.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
-  // --- ACCESS CONTROL METHODS ---
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passcode === '1234') {
-      setIsAuthenticated(true);
-    } else {
-      alert("INVALID PASSCODE");
-      setPasscode('');
-    }
-  };
-
+  // Face Database
   const fetchFaces = async () => {
     try {
       const res = await fetch(`http://localhost:8000/api/faces`);
       const data = await res.json();
       setFaces(data.faces || []);
     } catch (err) {
-      console.error("Failed to fetch faces", err);
-      setFaces([]);
+      console.error(err);
     }
   };
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
     const formData = new FormData();
-    formData.append('file', file);
-    await fetch(`http://localhost:8000/api/faces`, {
-      method: 'POST',
-      body: formData
-    });
+    formData.append('file', e.target.files[0]);
+    await fetch(`http://localhost:8000/api/faces`, { method: 'POST', body: formData });
     fetchFaces();
   };
 
@@ -244,342 +196,267 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
+    <div className="flex flex-col h-screen bg-slate-950 text-slate-300 font-mono overflow-hidden selection:bg-blue-500/30">
       
-      {/* Sidebar */}
-      <aside className="w-64 flex flex-col border-r border-slate-800 bg-slate-900/50 shrink-0 select-none">
-        <div className="flex items-center gap-3 p-6 border-b border-slate-800">
-          <div className="flex size-8 items-center justify-center rounded bg-blue-600 font-bold text-white">S</div>
-          <span className="font-semibold tracking-tight text-white uppercase">Project Satark</span>
+      {/* Top Navigation Bar */}
+      <header className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 shadow-md">
+        <div className="flex items-center gap-4">
+          <ShieldAlert className="w-6 h-6 text-blue-500" />
+          <div>
+            <h1 className="font-black tracking-widest text-white leading-none">SATARKH</h1>
+            <p className="text-[10px] text-blue-400 tracking-widest uppercase">Tactical Command Center</p>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
-          <a 
-            onClick={() => setActiveTab('monitor')}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'monitor' ? 'bg-blue-500/10 text-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
+        
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 px-3 py-1 bg-black/40 rounded border border-slate-800">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span className="text-xs text-green-400 font-bold tracking-widest">SECURE LINK ESTABLISHED</span>
+          </div>
+          
+          <button 
+            onClick={toggleNightVision}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded text-xs font-bold transition-all border ${nightVision ? 'bg-green-900/30 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
           >
-            <MonitorPlay size={18} /> Live Monitor
-          </a>
-          <a 
-            onClick={() => setActiveTab('boundary')}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'boundary' ? 'bg-orange-500/10 text-orange-400' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <PenTool size={18} /> Boundary Config
-          </a>
-          <a 
-            onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'analytics' ? 'bg-purple-500/10 text-purple-400' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <ChartColumn size={18} /> Analytics
-          </a>
-          <a 
-            onClick={() => setActiveTab('access')}
-            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium cursor-pointer ${activeTab === 'access' ? 'bg-green-500/10 text-green-400' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Lock size={18} /> Access Control
-          </a>
-          <a className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-50">
-            <Cctv size={18} /> Cameras
-          </a>
-        </nav>
-        <div className="p-4 border-t border-slate-800">
-          <div className="flex items-center gap-3 rounded bg-slate-800/50 p-3">
-            <div className="size-2 rounded-full bg-green-500 animate-pulse"></div>
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-wider">System Online</div>
-              <div className="font-mono text-[9px] text-slate-500">Edge node · RTX 4050 Active</div>
+            <Activity className="w-4 h-4" />
+            NIGHT VISION {nightVision ? 'ON' : 'OFF'}
+          </button>
+          
+          <div className="text-xs text-slate-500 flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded border border-slate-800">
+            <Clock className="w-4 h-4 text-blue-500" />
+            {currentTime}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Grid Layout */}
+      <main className="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
+        
+        {/* LEFT COLUMN: Controls & Settings */}
+        <div className="col-span-3 flex flex-col gap-4 min-h-0">
+          
+          {/* Module 1: Video Source */}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col overflow-hidden shrink-0">
+            <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-slate-400" />
+              <h2 className="text-xs font-bold text-white tracking-widest">VIDEO SOURCE</h2>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-3">
+              <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
+              <button 
+                onClick={() => videoFileRef.current?.click()}
+                className={`flex flex-col items-center justify-center p-3 border rounded transition-colors ${videoSource === 'file' ? 'bg-blue-900/20 border-blue-500 text-blue-400' : 'bg-slate-950 border-slate-800 hover:border-slate-600'}`}
+              >
+                <FileVideo className="w-6 h-6 mb-2" />
+                <span className="text-[10px] font-bold">UPLOAD .MP4</span>
+              </button>
+              <button 
+                onClick={() => changeSource('0', 'webcam')}
+                className={`flex flex-col items-center justify-center p-3 border rounded transition-colors ${videoSource === 'webcam' ? 'bg-orange-900/20 border-orange-500 text-orange-400' : 'bg-slate-950 border-slate-800 hover:border-slate-600'}`}
+              >
+                <Video className="w-6 h-6 mb-2" />
+                <span className="text-[10px] font-bold">LOCAL WEBCAM</span>
+              </button>
             </div>
           </div>
-        </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between border-b border-slate-800 px-8 bg-slate-900/30 shrink-0">
-          <div className="flex items-center gap-4 text-sm text-slate-400">
-            {activeTab === 'boundary' ? (
-              <span className="text-orange-400 font-mono font-bold animate-pulse">BOUNDARY EDIT MODE ACTIVE - DRAG CORNERS TO EDIT ZONE</span>
-            ) : activeTab === 'analytics' ? (
-              <span className="text-purple-400 font-mono font-bold">SYSTEM ANALYTICS & INTELLIGENCE</span>
-            ) : activeTab === 'access' ? (
-              <span className="text-green-400 font-mono font-bold">SECURE DATABASE MANAGEMENT</span>
-            ) : activeTab === 'settings' ? (
-              <span className="text-blue-400 font-mono font-bold">SYSTEM CONFIGURATION</span>
-            ) : (
-              <span className="text-slate-200 font-mono font-bold tracking-widest">LIVE TACTICAL FEED</span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setAudioMuted(!audioMuted)} className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${!audioMuted ? 'bg-red-900/30 border-red-500 text-red-400 border' : 'bg-slate-800 text-slate-400'}`}>
-              AUDIO: {!audioMuted ? 'LIVE' : 'MUTED'}
-            </button>
-            {activeTab === 'boundary' && (
-              <>
-                <button onClick={resetBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                  <RotateCcw size={14} /> DEFAULT 3D ZONE
-                </button>
-                <button onClick={clearBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800">
-                  <X size={14} /> CLEAR
-                </button>
-                <button onClick={saveBoundary} className="px-3 py-1.5 flex items-center gap-2 text-xs font-semibold rounded bg-green-900/50 hover:bg-green-900 text-green-200 border border-green-800">
-                  <Check size={14} /> SAVE ZONE
-                </button>
-              </>
-            )}
-            <button onClick={toggleNightVision} className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${nightVision ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}>
-              IR/NVG: {nightVision ? 'ON' : 'OFF'}
-            </button>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <div className="flex-1 p-6 flex gap-6 overflow-hidden">
-          
-          {/* Main Area based on Tab */}
-          {activeTab === 'access' ? (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              {!isAuthenticated ? (
-                <div className="bg-slate-900 border border-slate-800 p-8 rounded-xl flex flex-col items-center gap-4">
-                  <Lock size={48} className="text-slate-500 mb-4" />
-                  <h2 className="text-xl font-bold font-mono text-white">SECURE DATABASE ACCESS</h2>
-                  <p className="text-sm text-slate-400 mb-4">Enter passcode to view registered personnel</p>
-                  <form onSubmit={handleAuth} className="flex gap-2">
-                    <input 
-                      type="password" 
-                      value={passcode}
-                      onChange={e => setPasscode(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 rounded px-4 py-2 text-center tracking-[0.5em] font-mono focus:outline-none focus:border-blue-500"
-                      placeholder="****"
-                      autoFocus
-                    />
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold">
-                      VERIFY
-                    </button>
-                  </form>
+          {/* Module 2: Zone Config */}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col overflow-hidden shrink-0">
+            <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+              <Crosshair className="w-4 h-4 text-slate-400" />
+              <h2 className="text-xs font-bold text-white tracking-widest">PERIMETER ZONE</h2>
+            </div>
+            <div className="p-4 flex flex-col gap-3">
+              <p className="text-[10px] text-slate-500">Modify the tactical tripwire zone overlay on the primary feed.</p>
+              {boundaryMode ? (
+                <div className="flex gap-2">
+                  <button onClick={saveBoundary} className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded text-xs font-bold flex items-center justify-center gap-2">
+                    <Save className="w-4 h-4" /> SAVE ZONE
+                  </button>
+                  <button onClick={resetBoundary} className="px-3 bg-slate-800 hover:bg-slate-700 text-white rounded flex items-center justify-center transition-colors">
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
                 </div>
               ) : (
-                <div className="w-full max-w-4xl h-full flex flex-col gap-6">
-                  <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                    <div>
-                      <h2 className="text-xl font-bold font-mono text-white">REGISTERED PERSONNEL</h2>
-                      <p className="text-sm text-slate-400">Manage faces for DeepFace recognition</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      ref={fileInputRef}
-                      onChange={handleFaceUpload}
-                    />
-                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold text-sm">
-                      <UserPlus size={16} /> ADD PERSON
-                    </button>
-                  </div>
-                  
-                  <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-6 overflow-y-auto">
-                    {faces.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-slate-500 font-mono text-sm">
-                        NO PERSONNEL REGISTERED
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-4 gap-4">
-                        {faces.map((f, i) => (
-                          <div key={i} className="border border-slate-800 rounded-lg p-4 flex flex-col items-center justify-between gap-4 bg-slate-950">
-                            <div className="size-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                              <span className="text-slate-500 font-bold">{f.charAt(0).toUpperCase()}</span>
-                            </div>
-                            <span className="text-xs font-mono text-slate-300 truncate w-full text-center">{f}</span>
-                            <button onClick={() => deleteFace(f)} className="flex items-center gap-1 text-red-500 hover:text-red-400 text-xs mt-2">
-                              <Trash2 size={12} /> REMOVE
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <button onClick={() => setBoundaryMode(true)} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-2 rounded text-xs font-bold transition-colors">
+                  EDIT ZONE
+                </button>
               )}
             </div>
-          ) : activeTab === 'analytics' ? (
-            <div className="flex-1 flex flex-col gap-6 overflow-y-auto">
-              <div className="grid grid-cols-3 gap-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-slate-400 text-xs font-mono mb-2">TOTAL INCIDENTS TODAY</h3>
-                  <p className="text-4xl font-bold text-white">{events.length}</p>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-slate-400 text-xs font-mono mb-2">CRITICAL BREACHES</h3>
-                  <p className="text-4xl font-bold text-red-500">{events.filter(e => e.threat === 'CRITICAL').length}</p>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                  <h3 className="text-slate-400 text-xs font-mono mb-2">SYSTEM UPTIME</h3>
-                  <p className="text-4xl font-bold text-green-500">99.9%</p>
-                </div>
+          </div>
+
+          {/* Module 3: Face Database */}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col overflow-hidden flex-1 min-h-0">
+            <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-slate-400" />
+                <h2 className="text-xs font-bold text-white tracking-widest">KNOWN ENTITIES</h2>
               </div>
-              
-              <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col">
-                <h3 className="text-slate-400 text-xs font-mono mb-6">HOURLY THREAT DISTRIBUTION</h3>
-                <div className="flex-1 flex items-end gap-2">
-                  {/* Dummy bar chart */}
-                  {[12, 45, 23, 67, 10, 8, 90, 34, 12, 5].map((val, i) => (
-                    <div key={i} className="flex-1 bg-blue-500/20 hover:bg-blue-500/40 rounded-t-sm relative group" style={{ height: `${val}%` }}>
-                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-mono opacity-0 group-hover:opacity-100">{val}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400 border border-slate-800">{faces.length}</span>
             </div>
-          ) : activeTab === 'settings' ? (
-            <div className="flex-1 flex flex-col gap-6 overflow-y-auto max-w-2xl mx-auto w-full p-8">
-              <h2 className="text-xl font-bold font-mono border-b border-slate-800 pb-2">SYSTEM CONFIGURATION</h2>
+            <div className="p-4 flex-1 flex flex-col min-h-0">
+              <input type="file" accept="image/*" className="hidden" ref={faceFileRef} onChange={handleFaceUpload} />
+              <button 
+                onClick={() => faceFileRef.current?.click()}
+                className="w-full border border-dashed border-slate-600 hover:border-slate-400 text-slate-400 hover:text-white rounded py-2 text-[10px] font-bold flex items-center justify-center gap-2 mb-3 shrink-0 transition-colors"
+              >
+                <Plus className="w-4 h-4" /> REGISTER NEW FACE
+              </button>
               
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-4">
-                <h3 className="text-sm font-bold font-mono text-slate-400">VIDEO SOURCE OVERRIDE</h3>
-                <p className="text-xs text-slate-500 mb-2">The system defaults to high-resolution pre-recorded surveillance footage. You can manually override the feed to a live local webcam here.</p>
-                
-                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => { setSourceMode('file'); videoFileRef.current?.click(); }}
-                    className={`p-6 rounded-lg flex flex-col items-center justify-center gap-3 border-2 transition-all ${sourceMode === 'file' ? 'bg-blue-900/30 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                  >
-                    <span className="text-3xl">📁</span>
-                    <span className="font-mono text-sm font-bold">UPLOAD FOOTAGE</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => { setSourceMode('webcam'); changeSource('0'); }}
-                    className={`p-6 rounded-lg flex flex-col items-center justify-center gap-3 border-2 transition-all ${sourceMode === 'webcam' ? 'bg-orange-900/30 border-orange-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-                  >
-                    <span className="text-3xl">📷</span>
-                    <span className="font-mono text-sm font-bold">ENABLE WEBCAM</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col gap-4 min-w-0">
-              {/* Main Feed */}
-              <div className={`flex-1 relative rounded-xl border-2 overflow-hidden flex items-center justify-center bg-black select-none ${activeTab === 'boundary' ? 'border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : isBreaching ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.6)]' : 'border-slate-700'}`}>
-                
-                {/* SOS FLASH OVERLAY - fixed position so it never repaints the video stream */}
-                {isBreaching && (
-                  <div className="fixed inset-0 pointer-events-none z-50" style={{willChange: 'opacity'}}>
-                    <div className="absolute inset-0 border-8 border-red-600 animate-pulse" />
-                    <div className="absolute top-0 left-0 right-0 flex items-center justify-center pt-4">
-                      <div className="bg-red-600 px-8 py-3 font-mono font-black text-white text-2xl tracking-widest">
-                        ⚠ PERIMETER BREACH DETECTED
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <img 
-                  src="http://localhost:8000/video_feed" 
-                  draggable={false}
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-                  alt="Main Camera Feed"
-                />
-                
-                {/* Boundary Drawing Overlay */}
-                {activeTab === 'boundary' && (
-                  <svg 
-                    ref={svgRef}
-                    className="absolute inset-0 w-full h-full cursor-crosshair touch-none z-20" 
-                    viewBox="0 0 1280 720" 
-                    preserveAspectRatio="xMidYMid meet"
-                    onMouseMove={handlePointerMove}
-                    onMouseUp={handlePointerUp}
-                    onMouseLeave={handlePointerUp}
-                    onTouchMove={handlePointerMove}
-                    onTouchEnd={handlePointerUp}
-                  >
-                    {drawPoints.length > 2 && (
-                      <polygon 
-                        points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
-                        fill="rgba(249, 115, 22, 0.15)" 
-                        stroke="#f97316" 
-                        strokeWidth="2" 
-                        strokeDasharray="8 4"
-                      />
-                    )}
-                    {drawPoints.map((p, i) => (
-                      <g key={i}>
-                        <circle 
-                          cx={p.x} cy={p.y} r="20" 
-                          fill="transparent"
-                          className="cursor-grab active:cursor-grabbing"
-                          onMouseDown={(e) => handlePointerDown(i, e)}
-                          onTouchStart={(e) => handlePointerDown(i, e)}
-                        />
-                        <circle 
-                          cx={p.x} cy={p.y} r="6" 
-                          fill={draggingIdx === i ? "#fff" : "#f97316"} 
-                          stroke="#fff" strokeWidth="2"
-                          className="pointer-events-none"
-                        />
-                      </g>
-                    ))}
-                  </svg>
-                )}
-
-                <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none z-20">
-                  <span className="rounded bg-black/60 px-2 py-1 font-mono text-[10px] text-white">CAM_01 // BORDER_PRIMARY</span>
-                </div>
-                <div className="absolute right-3 top-3 flex items-center gap-2 font-mono text-[10px] text-slate-300 pointer-events-none z-20">
-                  <span className="flex items-center gap-1 text-red-500"><span className="size-1.5 rounded-full bg-red-500 animate-pulse"></span>REC</span>
-                </div>
-              </div>
-
-              {/* Bottom Grid */}
-              <div className="h-44 grid grid-cols-3 gap-4 shrink-0">
-                {[2, 3, 4].map(num => (
-                  <div key={num} className="relative rounded-xl border border-slate-800 bg-slate-900 overflow-hidden flex items-center justify-center">
-                     <div className="text-slate-600 font-mono text-xs text-center">
-                       <Cctv size={24} className="mx-auto mb-2 opacity-50" />
-                       CAM_0{num} OFFLINE
-                     </div>
-                     <div className="absolute left-2 top-2 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[8px] text-white">CAM_0{num}</div>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+                {faces.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between bg-slate-950 border border-slate-800 p-2 rounded group hover:border-slate-600 transition-colors">
+                    <span className="text-[11px] font-bold text-slate-300">{f.split('.')[0]}</span>
+                    <button onClick={() => deleteFace(f)} className="text-red-900 group-hover:text-red-500 transition-colors">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
+                {faces.length === 0 && (
+                  <div className="text-center mt-6 text-[10px] text-slate-600">NO ENTITIES REGISTERED</div>
+                )}
               </div>
             </div>
-          )}
+          </div>
+          
+        </div>
 
-          {/* Event Log Right Sidebar */}
-          <div className="w-80 flex flex-col border border-slate-800 rounded-xl bg-slate-900 shrink-0 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-800 p-4 shrink-0">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-white">Event Log</h2>
-              <div className="flex items-center gap-3">
-                <button onClick={exportLogs} className="text-slate-400 hover:text-white" title="Export Logs">
-                  <Download size={14} />
-                </button>
-                <span className="flex items-center gap-1.5 font-mono text-[10px] text-blue-400">
-                  <span className="size-1.5 rounded-full bg-blue-500 animate-pulse"></span>LIVE
-                </span>
-              </div>
+        {/* CENTER COLUMN: Tactical Feed */}
+        <div className="col-span-6 flex flex-col min-h-0">
+          <div className={`relative flex-1 bg-black rounded-lg border-2 overflow-hidden flex items-center justify-center transition-all duration-300 ${
+            boundaryMode ? 'border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.15)]' : 
+            isBreaching ? 'border-red-600 shadow-[0_0_40px_rgba(220,38,38,0.4)]' : 
+            'border-slate-800 shadow-xl shadow-black/50'
+          }`}>
+            
+            {/* Visual Indicators overlay */}
+            <div className="absolute top-4 left-4 z-30 pointer-events-none flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded backdrop-blur border border-white/10">
+              <Video className="w-4 h-4 text-blue-400" />
+              <span className="text-[10px] font-bold text-white tracking-widest">CAM_01 // SECURE_FEED</span>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-700">
+            <div className="absolute top-4 right-4 z-30 pointer-events-none flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded backdrop-blur border border-white/10">
+              <span className="text-[10px] font-bold text-red-500 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                REC // LIVE
+              </span>
+            </div>
+
+            {/* Perimeter Breach Flash */}
+            {isBreaching && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 bg-red-600 text-white font-black px-8 py-3 tracking-[0.25em] border-2 border-white animate-pulse pointer-events-none shadow-[0_0_50px_rgba(220,38,38,1)] text-xl">
+                THREAT DETECTED
+              </div>
+            )}
+
+            {/* Video Stream */}
+            <img 
+              src="http://localhost:8000/video_feed" 
+              className={`absolute inset-0 w-full h-full object-contain select-none transition-all duration-75 ${isBreaching ? 'opacity-80' : 'opacity-100'}`} 
+              draggable={false} 
+            />
+
+            {/* SVG Boundary Layer */}
+            <svg 
+              ref={svgRef}
+              className={`absolute inset-0 w-full h-full z-20 ${boundaryMode ? 'cursor-crosshair' : 'pointer-events-none'}`} 
+              viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet"
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onMouseLeave={handlePointerUp}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
+            >
+              {drawPoints.length > 2 && (
+                <polygon 
+                  points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                  fill={boundaryMode ? "rgba(249, 115, 22, 0.15)" : "transparent"} 
+                  stroke={boundaryMode ? "#f97316" : "rgba(255, 255, 255, 0.3)"} 
+                  strokeWidth={boundaryMode ? "2" : "1"} 
+                  strokeDasharray={boundaryMode ? "8 4" : "4 4"}
+                />
+              )}
+              {boundaryMode && drawPoints.map((p, i) => (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r="24" fill="transparent" className="cursor-grab active:cursor-grabbing" onMouseDown={(e) => handlePointerDown(i, e)} onTouchStart={(e) => handlePointerDown(i, e)} />
+                  <circle cx={p.x} cy={p.y} r="6" fill={draggingIdx === i ? "#fff" : "#f97316"} stroke="#fff" strokeWidth="2" className="pointer-events-none" />
+                </g>
+              ))}
+            </svg>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Telemetry & Logs */}
+        <div className="col-span-3 flex flex-col gap-4 min-h-0">
+          
+          {/* Module 4: Live Analytics */}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col overflow-hidden shrink-0">
+             <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-slate-400" />
+              <h2 className="text-xs font-bold text-white tracking-widest">TELEMETRY</h2>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] text-slate-500 tracking-wider mb-1">TOTAL TRACKS</div>
+                  <div className="text-3xl font-bold text-white font-sans">{events.length}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 tracking-wider mb-1">CRITICAL THREATS</div>
+                  <div className="text-3xl font-bold text-red-500 font-sans">{events.filter(e => e.threat === 'CRITICAL').length}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Module 5: Audit Log */}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col overflow-hidden flex-1 min-h-0">
+            <div className="bg-slate-800/50 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-slate-400" />
+                <h2 className="text-xs font-bold text-white tracking-widest">EVENT LOG</h2>
+              </div>
+              <button 
+                className="text-[10px] font-bold bg-slate-950 px-2 py-1 rounded text-blue-400 border border-slate-800 hover:border-slate-600 transition-colors"
+                onClick={() => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events, null, 2));
+                  const downloadAnchorNode = document.createElement('a');
+                  downloadAnchorNode.setAttribute("href", dataStr);
+                  downloadAnchorNode.setAttribute("download", "satark_events.json");
+                  document.body.appendChild(downloadAnchorNode);
+                  downloadAnchorNode.click();
+                  downloadAnchorNode.remove();
+                }}
+              >
+                EXPORT
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-slate-700">
               {events.map((evt, idx) => (
-                <div key={idx} className={`border-l-2 py-2 pl-3 ${evt.threat === 'CRITICAL' ? 'border-red-500 bg-red-500/10' : 'border-orange-500 bg-orange-500/10'}`}>
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className={`flex items-center gap-1.5 font-mono text-[10px] ${evt.threat === 'CRITICAL' ? 'text-red-400' : 'text-orange-400'}`}>
-                      <ShieldAlert size={12} /> {evt.time}
+                <div key={idx} className={`p-3 rounded border-l-2 ${evt.threat === 'CRITICAL' ? 'bg-red-950/20 border-red-500' : 'bg-slate-950/50 border-orange-500'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(evt.timestamp * 1000).toLocaleTimeString()}
                     </span>
-                    <span className={`rounded px-1 text-[9px] font-bold uppercase ${evt.threat === 'CRITICAL' ? 'bg-red-500 text-white' : 'bg-orange-500/20 text-orange-400'}`}>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded tracking-widest ${evt.threat === 'CRITICAL' ? 'bg-red-500 text-white' : 'bg-orange-900/50 text-orange-400'}`}>
                       {evt.threat}
                     </span>
                   </div>
-                  <p className="text-xs text-white leading-tight">{evt.type}</p>
-                  <p className="mt-1 font-mono text-[10px] text-slate-500">{evt.label}</p>
+                  <div className="text-[11px] text-slate-200 leading-tight mb-2 font-sans font-medium">{evt.description}</div>
+                  <div className="text-[9px] text-slate-600 bg-black/50 px-2 py-1 rounded inline-block">{evt.id}</div>
                 </div>
               ))}
+              {events.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-slate-600 opacity-50">
+                  <Shield className="w-12 h-12 mb-3 text-slate-700" />
+                  <p className="text-[11px] tracking-widest uppercase font-bold text-center">SYSTEM ARMED.<br/>NO BREACHES RECORDED.</p>
+                </div>
+              )}
             </div>
           </div>
-
+          
         </div>
       </main>
     </div>
