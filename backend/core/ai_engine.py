@@ -127,7 +127,7 @@ class AIEngine:
                 dfs = DeepFace.find(
                     img_path=cropped,
                     db_path="registered_faces",
-                    detector_backend="yolov8",
+                    detector_backend="retinaface",
                     align=True,
                     model_name="Facenet512",
                     enforce_detection=True,
@@ -214,25 +214,28 @@ class AIEngine:
                 cv2.circle(display_frame, (foot_x, foot_y), 8, (255, 255, 255), 1)
 
                 # --- BREACH EVENTS ---
-                # Universal alarm: everyone triggers on breach — face rec is identification only
-                if is_breaching and track_id not in self.breach_fired:
-                    self.breach_fired.add(track_id)
-                    event = {
-                        "id": track_id,
-                        "type": "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH",
-                        "obj_class": obj_name,
-                        "timestamp": time.time(),
-                    }
-                    if face_status and face_status.startswith("KNOWN:"):
-                        event["face"] = face_status.split("KNOWN:")[1]
-                        event["identity"] = "KNOWN"
-                    elif face_status == "UNKNOWN":
-                        event["identity"] = "UNKNOWN INTRUDER"
-                    else:
-                        event["identity"] = "IDENTIFYING..."
-                    if plate:
-                        event["plate"] = plate
-                    events.append(event)
+                if is_breaching:
+                    if track_id not in self.breach_fired:
+                        self.breach_fired.add(track_id)
+                        event = {
+                            "id": track_id,
+                            "type": "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH",
+                            "obj_class": obj_name,
+                            "timestamp": time.time(),
+                        }
+                        if face_status and face_status.startswith("KNOWN:"):
+                            event["face"] = face_status.split("KNOWN:")[1]
+                            event["identity"] = "KNOWN"
+                        elif face_status == "UNKNOWN":
+                            event["identity"] = "UNKNOWN INTRUDER"
+                        else:
+                            event["identity"] = "IDENTIFYING..."
+                        if plate:
+                            event["plate"] = plate
+                        events.append(event)
+                else:
+                    if track_id in self.breach_fired:
+                        self.breach_fired.discard(track_id)
 
         # --- DRAW TRIPWIRE ON FRAME ---
         if len(self.tripwire_points) > 1:

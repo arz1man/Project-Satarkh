@@ -15,6 +15,9 @@ export default function Home() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passcode, setPasscode] = useState('');
   
+  // Display Toggles
+  const [bwFilter, setBwFilter] = useState(true);
+  
   // Advanced Modules (SentinelAI visual toggles)
   const [modules, setModules] = useState({
     weapon: false,
@@ -72,10 +75,19 @@ export default function Home() {
       const ws = new WebSocket('ws://localhost:8000/ws/events');
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'SOS_TRIGGERED') {
+        
+        const isCritical = data.type === 'PERSON_BREACH' || data.type === 'VEHICLE_BREACH' || data.type === 'WEAPON_DETECTED' || data.type === 'VIOLENCE_ANOMALY';
+        
+        if (data.type === 'SOS_TRIGGERED' || isCritical) {
           setSosActive(true);
           setTimeout(() => setSosActive(false), 5000); // 5 sec SOS mode
         }
+        
+        if (isCritical) {
+          setIsBreaching(true);
+          setTimeout(() => setIsBreaching(false), 2000);
+        }
+        
         setEvents(prev => [data, ...prev].slice(0, 50));
       };
       ws.onclose = () => setTimeout(connectWS, 2000);
@@ -305,6 +317,17 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Display Config */}
+                <div className="border border-red-900/30 p-2">
+                  <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Video className="w-3 h-3"/> DISPLAY CONFIG</h3>
+                  <button 
+                    onClick={() => setBwFilter(!bwFilter)} 
+                    className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${bwFilter ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
+                  >
+                    B&W FILTER: {bwFilter ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
                 {/* Face DB */}
                 <div className="border border-red-900/30 p-2 flex-1 flex flex-col min-h-0">
                   <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center justify-between">
@@ -361,57 +384,60 @@ export default function Home() {
               </div>
             )}
             
-            {/* Dark overlay for sci-fi contrast */}
-            <div className="absolute inset-0 bg-red-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
+            {/* Aspect Video Wrapper to prevent coordinate drift */}
+            <div className="relative w-full aspect-video max-h-full flex items-center justify-center">
+              {/* Dark overlay for sci-fi contrast */}
+              <div className="absolute inset-0 bg-red-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
 
-            <img 
-              src="http://localhost:8000/video_feed" 
-              className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 mix-blend-screen contrast-125 saturate-0 ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
-              draggable={false} 
-            />
+              <img 
+                src="http://localhost:8000/video_feed" 
+                className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 mix-blend-screen contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
+                draggable={false} 
+              />
 
-            {/* 3D Depth Perimeter Grid & SVG */}
-            <div className="absolute inset-0 z-20 pointer-events-none">
-              <svg 
-                ref={svgRef}
-                className={`w-full h-full ${boundaryMode ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'}`} 
-                viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid meet"
-                onMouseMove={handlePointerMove}
-                onMouseUp={handlePointerUp}
-                onMouseLeave={handlePointerUp}
-                onTouchMove={handlePointerMove}
-                onTouchEnd={handlePointerUp}
-              >
-                {/* Decorative isometric grid floor under the polygon (only visible if zone exists) */}
-                {drawPoints.length > 2 && !boundaryMode && (
-                  <g opacity="0.2">
-                     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                       <path d="M 40 0 L 0 0 0 40" fill="none" stroke="red" strokeWidth="0.5"/>
-                     </pattern>
-                     <rect width="1280" height="720" fill="url(#grid)" />
-                  </g>
-                )}
+              {/* 3D Depth Perimeter Grid & SVG */}
+              <div className="absolute inset-0 z-20 pointer-events-none">
+                <svg 
+                  ref={svgRef}
+                  className={`w-full h-full ${boundaryMode ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'}`} 
+                  viewBox="0 0 1280 720" preserveAspectRatio="none"
+                  onMouseMove={handlePointerMove}
+                  onMouseUp={handlePointerUp}
+                  onMouseLeave={handlePointerUp}
+                  onTouchMove={handlePointerMove}
+                  onTouchEnd={handlePointerUp}
+                >
+                  {/* Decorative isometric grid floor under the polygon (only visible if zone exists) */}
+                  {drawPoints.length > 2 && !boundaryMode && (
+                    <g opacity="0.2">
+                       <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                         <path d="M 40 0 L 0 0 0 40" fill="none" stroke="red" strokeWidth="0.5"/>
+                       </pattern>
+                       <rect width="1280" height="720" fill="url(#grid)" />
+                    </g>
+                  )}
 
-                {drawPoints.length > 2 && (
-                  <polygon 
-                    points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
-                    fill={isBreaching ? "rgba(255, 0, 0, 0.2)" : "rgba(255, 0, 0, 0.05)"} 
-                    stroke="#ff0000" 
-                    strokeWidth="1.5" 
-                    strokeDasharray={boundaryMode ? "5 5" : "none"}
-                    className={isBreaching ? 'animate-pulse' : ''}
-                  />
-                )}
-                
-                {/* Points */}
-                {boundaryMode && drawPoints.map((p, i) => (
-                  <g key={i}>
-                    <circle cx={p.x} cy={p.y} r="30" fill="transparent" className="cursor-grab active:cursor-grabbing pointer-events-auto" onMouseDown={(e) => handlePointerDown(i, e)} onTouchStart={(e) => handlePointerDown(i, e)} />
-                    <circle cx={p.x} cy={p.y} r="4" fill={draggingIdx === i ? "#fff" : "#ff0000"} stroke="#ff0000" strokeWidth="1" className="pointer-events-none shadow-[0_0_10px_red]" />
-                    <text x={p.x + 10} y={p.y - 10} fill="red" fontSize="12" fontFamily="monospace" opacity="0.6">P{i}</text>
-                  </g>
-                ))}
-              </svg>
+                  {drawPoints.length > 2 && (
+                    <polygon 
+                      points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                      fill={isBreaching ? "rgba(255, 0, 0, 0.2)" : "rgba(255, 0, 0, 0.05)"} 
+                      stroke="#ff0000" 
+                      strokeWidth="1.5" 
+                      strokeDasharray={boundaryMode ? "5 5" : "none"}
+                      className={isBreaching ? 'animate-pulse' : ''}
+                    />
+                  )}
+                  
+                  {/* Points */}
+                  {boundaryMode && drawPoints.map((p, i) => (
+                    <g key={i}>
+                      <circle cx={p.x} cy={p.y} r="30" fill="transparent" className="cursor-grab active:cursor-grabbing pointer-events-auto" onMouseDown={(e) => handlePointerDown(i, e)} onTouchStart={(e) => handlePointerDown(i, e)} />
+                      <circle cx={p.x} cy={p.y} r="4" fill={draggingIdx === i ? "#fff" : "#ff0000"} stroke="#ff0000" strokeWidth="1" className="pointer-events-none shadow-[0_0_10px_red]" />
+                      <text x={p.x + 10} y={p.y - 10} fill="red" fontSize="12" fontFamily="monospace" opacity="0.6">P{i}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
             </div>
           </div>
           
