@@ -194,7 +194,7 @@ export default function Home() {
         
         <div className="flex items-center gap-6">
           <h1 className="font-bold tracking-widest text-red-500 text-lg shadow-red-500/50 drop-shadow-md">
-            SENTINEL // OVERWATCH
+            PROJECT SATARKH
           </h1>
           <div className="text-[10px] tracking-widest uppercase border border-red-900/50 px-2 py-0.5 rounded-sm">
             v9.4.01
