@@ -25,6 +25,7 @@ export default function Home() {
     face: true,
     alpr: true
   });
+  const [fps, setFps] = useState<number>(0);
 
   // Tripwire State
   const [boundaryMode, setBoundaryMode] = useState(false);
@@ -76,16 +77,41 @@ export default function Home() {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
+        if (data.type === 'TELEMETRY') {
+          setFps(data.fps);
+          return; // Don't add to event logs
+        }
+        
         const isCritical = data.type === 'PERSON_BREACH' || data.type === 'VEHICLE_BREACH' || data.type === 'WEAPON_DETECTED' || data.type === 'VIOLENCE_ANOMALY';
         
         if (data.type === 'SOS_TRIGGERED' || isCritical) {
           setSosActive(true);
           setTimeout(() => setSosActive(false), 5000); // 5 sec SOS mode
+          
+          // Play Sci-Fi Alarm Sound
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+          } catch (e) {}
         }
         
         if (isCritical) {
           setIsBreaching(true);
           setTimeout(() => setIsBreaching(false), 2000);
+          
+          // Normalize event for the UI
+          data.threat = 'CRITICAL';
+          data.description = data.type.replace('_', ' ') + (data.identity ? ` - ${data.identity}` : '');
         }
         
         setEvents(prev => [data, ...prev].slice(0, 50));
@@ -444,7 +470,7 @@ export default function Home() {
           {/* Quick HUD Data row */}
           <div className="h-12 border border-red-900/50 mt-1 bg-black flex items-center justify-between px-4 text-[9px] tracking-widest text-red-500 overflow-x-auto shrink-0 scrollbar-none">
             <div className="flex gap-4 shrink-0 mr-4">
-               <span className="flex items-center gap-1"><Activity className="w-3 h-3"/> FPS: 30.1</span>
+               <span className="flex items-center gap-1"><Activity className="w-3 h-3"/> FPS: {fps > 0 ? fps.toFixed(1) : 'CALC...'}</span>
                <span className="flex items-center gap-1"><ScanEye className="w-3 h-3"/> YOLOv8n CUDA</span>
             </div>
             <div className="flex gap-2 shrink-0">

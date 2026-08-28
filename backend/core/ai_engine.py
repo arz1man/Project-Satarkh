@@ -34,6 +34,11 @@ class AIEngine:
         self.face_queue = queue.LifoQueue(maxsize=2)
         self.plate_queue = queue.LifoQueue(maxsize=2)
         
+        self.last_fps_time = time.time()
+        self.frame_count_for_fps = 0
+        self.current_fps = 0.0
+
+        # Start background workers
         threading.Thread(target=self._face_worker, daemon=True).start()
         threading.Thread(target=self._plate_worker, daemon=True).start()
 
@@ -145,6 +150,16 @@ class AIEngine:
 
     def process_frame(self, raw_frame, display_frame):
         events = []
+        
+        # Calculate FPS
+        self.frame_count_for_fps += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_fps_time
+        if elapsed >= 1.0:
+            self.current_fps = self.frame_count_for_fps / elapsed
+            events.append({"type": "TELEMETRY", "fps": round(self.current_fps, 1)})
+            self.last_fps_time = current_time
+            self.frame_count_for_fps = 0
 
         with self.lock:
             results = self.model.track(raw_frame, persist=True, tracker="bytetrack.yaml", classes=self.target_classes, verbose=False)
