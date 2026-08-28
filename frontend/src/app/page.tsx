@@ -16,7 +16,7 @@ export default function Home() {
   const [passcode, setPasscode] = useState('');
   
   // Display Toggles
-  const [bwFilter, setBwFilter] = useState(true);
+  const [bwFilter, setBwFilter] = useState(false);
   
   // Advanced Modules (SentinelAI visual toggles)
   const [modules, setModules] = useState({
