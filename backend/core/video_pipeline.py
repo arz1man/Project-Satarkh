@@ -38,9 +38,20 @@ class VideoPipeline:
     def set_night_vision(self, enabled: bool):
         self.night_vision_enabled = enabled
 
-    def _apply_night_vision(self, frame):
+    def _apply_clahe(self, frame):
+        """Applies CLAHE to the luminance channel to boost low-light details for YOLO."""
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l_channel, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl = clahe.apply(l_channel)
+        merged = cv2.merge((cl, a, b))
+        return cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+
+    def _apply_night_vision_display(self, frame):
+        """Tactical green phosphor effect for the UI."""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
         zeros = np.zeros_like(gray)
         return cv2.merge([zeros, gray, zeros])
 
@@ -62,9 +73,12 @@ class VideoPipeline:
         # perfectly aligns with the video pixels, preventing coordinate drift on 4:3 webcams.
         frame = cv2.resize(frame, (1280, 720))
 
-        display_frame = frame.copy()
         if self.night_vision_enabled:
-            display_frame = self._apply_night_vision(display_frame)
+            # Apply CLAHE to the raw frame so YOLO actually sees better in the dark!
+            frame = self._apply_clahe(frame)
+            display_frame = self._apply_night_vision_display(frame)
+        else:
+            display_frame = frame.copy()
 
         return frame, display_frame
 

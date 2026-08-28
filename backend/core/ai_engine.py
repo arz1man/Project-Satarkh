@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
+import threading
+import queue
+import time
+import os
 from shapely.geometry import Point, Polygon, LineString
 from ultralytics import YOLO
 import easyocr
 from deepface import DeepFace
-import time
-import os
-import threading
 
 class AIEngine:
     def __init__(self):
@@ -18,6 +19,13 @@ class AIEngine:
         self.face_cache = {}
         self.plate_cache = {}
         self.breach_fired = set()
+
+        # Thread Queue Exhaustion Fix: LIFO queues to drop stale frames if overloaded
+        self.face_queue = queue.LifoQueue(maxsize=2)
+        self.plate_queue = queue.LifoQueue(maxsize=2)
+        
+        threading.Thread(target=self._face_worker, daemon=True).start()
+        threading.Thread(target=self._plate_worker, daemon=True).start()
 
     def reset_tracking(self):
         """Call this whenever the video source changes to clear all stale track state."""
@@ -67,61 +75,59 @@ class AIEngine:
             return self.tripwire_polygon.distance(ground_point) < 5
         return False
 
-    def _extract_license_plate_thread(self, cropped_vehicle, track_id):
-        """Runs EasyOCR in a background thread to never block the video feed."""
-        try:
-            if cropped_vehicle.size == 0:
-                return
-            results = self.reader.readtext(cropped_vehicle)
-            if results:
-                best = max(results, key=lambda r: r[2])
-                if best[2] > 0.3:
-                    self.plate_cache[track_id] = best[1].upper().strip()
-        except Exception as e:
-            print("ALPR error:", e)
+    def _plate_worker(self):
+        while True:
+            try:
+                frame, bbox, track_id = self.plate_queue.get()
+                x1, y1, x2, y2 = bbox
+                cropped = frame[int(y1):int(y2), int(x1):int(x2)]
+                if cropped.size > 0:
+                    results = self.reader.readtext(cropped)
+                    if results:
+                        best = max(results, key=lambda r: r[2])
+                        if best[2] > 0.3:
+                            self.plate_cache[track_id] = best[1].upper().strip()
+            except Exception as e:
+                print("ALPR Worker Error:", e)
 
     def _extract_license_plate(self, frame, bbox, track_id):
-        """Non-blocking plate extraction — fires a thread, returns cached result."""
         if track_id not in self.plate_cache:
-            x1, y1, x2, y2 = bbox
-            cropped = frame[int(y1):int(y2), int(x1):int(x2)].copy()
             self.plate_cache[track_id] = None  # Mark as in-progress
-            t = threading.Thread(target=self._extract_license_plate_thread, args=(cropped, track_id))
-            t.daemon = True
-            t.start()
+            try:
+                self.plate_queue.put_nowait((frame.copy(), bbox, track_id))
+            except queue.Full:
+                pass  # Drop frame if overloaded
         return self.plate_cache.get(track_id)
 
-    def _run_face_rec_thread(self, cropped_person, track_id):
-        """Runs FaceNet in a background thread — never blocks the video feed."""
-        try:
-            if cropped_person.size == 0:
+    def _face_worker(self):
+        while True:
+            try:
+                frame, bbox, track_id = self.face_queue.get()
+                x1, y1, x2, y2 = bbox
+                cropped = frame[int(y1):int(y2), int(x1):int(x2)]
+                
+                if cropped.size == 0 or not os.path.exists("registered_faces") or not any(f.lower().endswith(('.png', '.jpg', '.jpeg')) for f in os.listdir("registered_faces")):
+                    self.face_cache[track_id] = "UNKNOWN"
+                    continue
+                    
+                dfs = DeepFace.find(
+                    img_path=cropped,
+                    db_path="registered_faces",
+                    detector_backend="skip",
+                    align=False,
+                    model_name="Facenet",
+                    enforce_detection=False,
+                    silent=True
+                )
+                if len(dfs) > 0 and not dfs[0].empty:
+                    match_path = dfs[0].iloc[0]['identity']
+                    name = os.path.basename(match_path).split('.')[0]
+                    self.face_cache[track_id] = f"KNOWN:{name}"
+                else:
+                    self.face_cache[track_id] = "UNKNOWN"
+            except Exception as e:
                 self.face_cache[track_id] = "UNKNOWN"
-                return
-            if not os.path.exists("registered_faces") or not any(
-                f.lower().endswith(('.jpg', '.jpeg', '.png'))
-                for f in os.listdir("registered_faces")
-            ):
-                self.face_cache[track_id] = "UNKNOWN"
-                return
-
-            dfs = DeepFace.find(
-                img_path=cropped_person,
-                db_path="registered_faces",
-                model_name="Facenet",
-                enforce_detection=False,
-                align=False,
-                silent=True,
-                detector_backend="skip"
-            )
-            if len(dfs) > 0 and len(dfs[0]) > 0:
-                matched_path = dfs[0].iloc[0]['identity']
-                name = os.path.splitext(os.path.basename(matched_path))[0]
-                self.face_cache[track_id] = f"KNOWN:{name}"
-            else:
-                self.face_cache[track_id] = "UNKNOWN"
-        except Exception as e:
-            print("Face check error:", e)
-            self.face_cache[track_id] = "UNKNOWN"
+                print("Face Rec Worker Error:", e)
 
     def process_frame(self, raw_frame, display_frame):
         events = []
@@ -145,12 +151,10 @@ class AIEngine:
                         # Only kick off a new thread if not already scanning
                         if self.face_cache.get(track_id) != "SCANNING":
                             self.face_cache[track_id] = "SCANNING"
-                            t = threading.Thread(
-                                target=self._run_face_rec_thread,
-                                args=(raw_frame[y1:y2, x1:x2].copy(), track_id)
-                            )
-                            t.daemon = True
-                            t.start()
+                            try:
+                                self.face_queue.put_nowait((raw_frame.copy(), box, track_id))
+                            except queue.Full:
+                                pass  # Drop if overwhelmed
                     face_status = self.face_cache.get(track_id, "SCANNING")
 
                 # --- LICENSE PLATE (vehicles only, always try to read) ---
