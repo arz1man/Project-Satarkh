@@ -29,6 +29,7 @@ class AIEngine:
         self.face_cache = {}
         self.plate_cache = {}
         self.breach_fired = set()
+        self.seen_tracks = set()
 
         # Thread Queue Exhaustion Fix: LIFO queues to drop stale frames if overloaded
         self.face_queue = queue.LifoQueue(maxsize=2)
@@ -47,6 +48,7 @@ class AIEngine:
         self.face_cache = {}
         self.plate_cache = {}
         self.breach_fired = set()
+        self.seen_tracks = set()
         # Reinitialize YOLO model to clear its internal tracker state
         self.model = YOLO('yolov8n.pt')
         print("AI Engine: tracking state reset.")
@@ -233,7 +235,7 @@ class AIEngine:
                     if track_id not in self.breach_fired:
                         self.breach_fired.add(track_id)
                         event = {
-                            "id": track_id,
+                            "id": f"T-{track_id}",
                             "type": "PERSON_BREACH" if class_id == 0 else "VEHICLE_BREACH",
                             "obj_class": obj_name,
                             "timestamp": time.time(),
@@ -251,6 +253,30 @@ class AIEngine:
                 else:
                     if track_id in self.breach_fired:
                         self.breach_fired.discard(track_id)
+                
+                # --- NEW TARGET / INFO EVENTS ---
+                if track_id not in self.seen_tracks:
+                    self.seen_tracks.add(track_id)
+                    events.append({
+                        "id": f"T-{track_id}",
+                        "type": "TARGET_ACQUIRED",
+                        "obj_class": obj_name,
+                        "timestamp": time.time(),
+                        "details": f"New {obj_name} acquired in sector."
+                    })
+                
+                # If face is known but we haven't logged it yet, emit a warning
+                # We can store a dict instead of set for seen_tracks if we wanted, but let's just use another cache
+                if face_status and face_status.startswith("KNOWN:"):
+                    cache_key = f"{track_id}_known"
+                    if cache_key not in self.seen_tracks:
+                        self.seen_tracks.add(cache_key)
+                        events.append({
+                            "id": f"T-{track_id}",
+                            "type": "KNOWN_PERSON_DETECTED",
+                            "identity": face_status.split("KNOWN:")[1],
+                            "timestamp": time.time(),
+                        })
 
         # --- DRAW TRIPWIRE ON FRAME ---
         if len(self.tripwire_points) > 1:

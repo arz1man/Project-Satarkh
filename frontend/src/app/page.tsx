@@ -111,7 +111,16 @@ export default function Home() {
           
           // Normalize event for the UI
           data.threat = 'CRITICAL';
-          data.description = data.type.replace('_', ' ') + (data.identity ? ` - ${data.identity}` : '');
+          data.description = data.type.replace(/_/g, ' ') + (data.identity ? ` - ${data.identity}` : '');
+        } else if (data.type === 'KNOWN_PERSON_DETECTED') {
+          data.threat = 'WARNING';
+          data.description = `KNOWN ENTITY: ${data.identity}`;
+        } else if (data.type === 'TARGET_ACQUIRED') {
+          data.threat = 'INFO';
+          data.description = `TARGET ACQUIRED: ${data.obj_class}`;
+        } else {
+          data.threat = 'INFO';
+          data.description = data.type;
         }
         
         setEvents(prev => [data, ...prev].slice(0, 50));
@@ -498,21 +507,23 @@ export default function Home() {
                 <div className="absolute w-24 h-24 border border-red-900/30 rounded-full"></div>
                 <div className="absolute w-16 h-16 border border-red-500/30 rounded-full border-t-red-500 animate-spin" style={{animationDuration: '3s'}}></div>
                 <div className="text-center">
-                  <div className="text-2xl font-black text-red-500 drop-shadow-[0_0_5px_red] leading-none">{events.length}</div>
-                  <div className="text-[8px] text-red-900 tracking-widest">TOTAL</div>
+                  <div className="text-2xl font-black text-red-500 drop-shadow-[0_0_5px_red] leading-none">
+                    {new Set(events.map(e => e.id)).size}
+                  </div>
+                  <div className="text-[8px] text-red-900 tracking-widest">TARGETS</div>
                 </div>
                 {/* Blips */}
                 {isBreaching && <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div>}
              </div>
              
              <div className="grid grid-cols-2 gap-2 mt-2 text-center">
-                <div className="border border-red-900/30 py-1 bg-red-950/10">
+                <div className="border py-1 bg-red-950/10 border-red-900/30">
                   <div className="text-red-500 font-bold">{events.filter(e => e.threat === 'CRITICAL').length}</div>
                   <div className="text-[8px] text-red-900 tracking-widest">CRITICAL</div>
                 </div>
-                <div className="border border-red-900/30 py-1 bg-red-950/10">
-                  <div className="text-red-500 font-bold">{events.filter(e => e.threat === 'WARNING').length}</div>
-                  <div className="text-[8px] text-red-900 tracking-widest">WARNING</div>
+                <div className="border py-1 bg-yellow-950/10 border-yellow-900/30">
+                  <div className="text-yellow-500 font-bold">{events.filter(e => e.threat === 'WARNING').length}</div>
+                  <div className="text-[8px] text-yellow-700 tracking-widest">WARNING</div>
                 </div>
              </div>
           </div>
@@ -526,13 +537,14 @@ export default function Home() {
             
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-red-900">
               {events.map((evt, idx) => (
-                <div key={idx} className={`border border-red-900/30 p-2 relative ${evt.threat === 'CRITICAL' ? 'bg-red-950/40' : 'bg-red-950/10'}`}>
+                <div key={idx} className={`border p-2 relative ${evt.threat === 'CRITICAL' ? 'bg-red-950/40 border-red-500/50' : evt.threat === 'WARNING' ? 'bg-yellow-950/20 border-yellow-900/30' : 'bg-red-950/10 border-red-900/30'}`}>
                   {evt.threat === 'CRITICAL' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500"></div>}
+                  {evt.threat === 'WARNING' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-yellow-500"></div>}
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[8px] text-red-500/70">{new Date(evt.timestamp * 1000).toLocaleTimeString()}</span>
-                    <span className="text-[8px] tracking-widest font-bold text-red-500">[{evt.threat}]</span>
+                    <span className="text-[8px] opacity-70">{new Date(evt.timestamp * 1000).toLocaleTimeString()}</span>
+                    <span className={`text-[8px] tracking-widest font-bold ${evt.threat === 'CRITICAL' ? 'text-red-500' : evt.threat === 'WARNING' ? 'text-yellow-500' : 'text-red-400'}`}>[{evt.threat}]</span>
                   </div>
-                  <div className="text-[9px] text-red-400 leading-tight uppercase">{evt.description}</div>
+                  <div className={`text-[9px] leading-tight uppercase ${evt.threat === 'CRITICAL' ? 'text-red-400 font-bold' : evt.threat === 'WARNING' ? 'text-yellow-400' : 'text-red-400'}`}>{evt.description}</div>
                   <div className="text-[7px] text-red-900 mt-1">{evt.id}</div>
                 </div>
               ))}
