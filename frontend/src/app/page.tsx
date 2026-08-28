@@ -273,12 +273,12 @@ export default function Home() {
                   <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Target className="w-3 h-3"/> THREAT MODULES</h3>
                   <div className="flex flex-col gap-1 text-[9px]">
                     <div className="flex justify-between border-b border-red-900/20 pb-1">
-                      <span className="text-red-500/70">WEAPON DETECT</span>
-                      <span className="text-red-900">N/A (MISSING .PTH)</span>
+                      <span className="text-red-500">WEAPON DETECT</span>
+                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
                     </div>
                     <div className="flex justify-between border-b border-red-900/20 pb-1">
-                      <span className="text-red-500/70">ANOMALY DETECT</span>
-                      <span className="text-red-900">N/A (MISSING .PTH)</span>
+                      <span className="text-red-500">ANOMALY DETECT</span>
+                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
                     </div>
                     <div className="flex justify-between border-b border-red-900/20 pb-1">
                       <span className="text-red-500">FACIAL RECOGNITION</span>

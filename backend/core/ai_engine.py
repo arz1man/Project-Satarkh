@@ -12,6 +12,15 @@ from deepface import DeepFace
 class AIEngine:
     def __init__(self):
         self.model = YOLO('yolov8n.pt')
+        
+        self.weapon_model = None
+        self.violence_model = None
+        if os.path.exists('weights/weapon_detection.pt'):
+            self.weapon_model = YOLO('weights/weapon_detection.pt')
+        if os.path.exists('weights/violence_detection.pt'):
+            self.violence_model = YOLO('weights/violence_detection.pt')
+            
+        self.frame_count = 0
         self.reader = easyocr.Reader(['en'], gpu=True)
         self.tripwire_points = []
         self.tripwire_polygon = None
@@ -232,5 +241,33 @@ class AIEngine:
             pts = np.array(scaled_pts, np.int32).reshape((-1, 1, 2))
             is_poly = isinstance(self.tripwire_polygon, Polygon)
             cv2.polylines(display_frame, [pts], is_poly, (0, 165, 255), 2)
+
+        # --- SENTINEL AI MODULES (WEAPON & VIOLENCE) ---
+        if self.frame_count % 3 == 0:
+            if self.weapon_model:
+                try:
+                    w_res = self.weapon_model(raw_frame, verbose=False)[0]
+                    for box in w_res.boxes:
+                        if float(box.conf[0]) > 0.4:
+                            x1w, y1w, x2w, y2w = map(int, box.xyxy[0])
+                            cv2.rectangle(display_frame, (x1w, y1w), (x2w, y2w), (0, 0, 255), 2) # BGR
+                            cv2.putText(display_frame, "WEAPON DETECTED", (x1w, y1w - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                            events.append({"id": f"W-{self.frame_count}", "type": "WEAPON_DETECTED", "timestamp": time.time()})
+                except Exception as e:
+                    print("Weapon detect error:", e)
+
+            if self.violence_model:
+                try:
+                    v_res = self.violence_model(raw_frame, verbose=False)[0]
+                    for box in v_res.boxes:
+                        if float(box.conf[0]) > 0.5:
+                            cls_name = self.violence_model.names[int(box.cls[0])].lower()
+                            if 'violen' in cls_name or 'fight' in cls_name:
+                                x1v, y1v, x2v, y2v = map(int, box.xyxy[0])
+                                cv2.rectangle(display_frame, (x1v, y1v), (x2v, y2v), (0, 0, 255), 3)
+                                cv2.putText(display_frame, "VIOLENCE DETECTED", (x1v, max(y1v - 20, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3)
+                                events.append({"id": f"V-{self.frame_count}", "type": "VIOLENCE_ANOMALY", "timestamp": time.time()})
+                except Exception as e:
+                    print("Violence detect error:", e)
 
         return display_frame, events
