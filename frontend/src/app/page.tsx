@@ -14,8 +14,7 @@ export default function Dashboard() {
   
   // Source State
   const [videoSource, setVideoSource] = useState('0');
-  const [droidcamIp, setDroidcamIp] = useState('');
-  const [sourceMode, setSourceMode] = useState<'webcam'|'droidcam'|'file'>('webcam');
+  const [sourceMode, setSourceMode] = useState<'webcam'|'file'>('file');
   const videoFileRef = useRef<HTMLInputElement>(null);
 
   // Access Control State
@@ -111,11 +110,15 @@ export default function Dashboard() {
 
   const changeSource = async (src: string) => {
     setVideoSource(src);
-    await fetch(`http://localhost:8000/api/source`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: src })
-    });
+    try {
+      await fetch(`http://localhost:8000/api/source`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: src })
+      });
+    } catch (e) {
+      console.warn("Source change fetch failed, backend might be restarting:", e);
+    }
   };
 
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,32 +304,10 @@ export default function Dashboard() {
               <span className="text-purple-400 font-mono font-bold">SYSTEM ANALYTICS & INTELLIGENCE</span>
             ) : activeTab === 'access' ? (
               <span className="text-green-400 font-mono font-bold">SECURE DATABASE MANAGEMENT</span>
+            ) : activeTab === 'settings' ? (
+              <span className="text-blue-400 font-mono font-bold">SYSTEM CONFIGURATION</span>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-slate-500 uppercase">Source:</span>
-                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
-                <button
-                  onClick={() => { setSourceMode('webcam'); changeSource('0'); }}
-                  className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'webcam' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-                >WEBCAM</button>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={droidcamIp}
-                    onChange={e => setDroidcamIp(e.target.value)}
-                    placeholder="192.168.x.x:4747"
-                    className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] text-white w-36 focus:outline-none focus:border-blue-500"
-                  />
-                  <button
-                    onClick={() => { setSourceMode('droidcam'); changeSource(`http://${droidcamIp}/video`); }}
-                    className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'droidcam' ? 'bg-green-700 border-green-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-                  >DROIDCAM</button>
-                </div>
-                <button
-                  onClick={() => { setSourceMode('file'); videoFileRef.current?.click(); }}
-                  className={`px-2 py-1 text-[10px] font-bold font-mono rounded border ${sourceMode === 'file' ? 'bg-orange-700 border-orange-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
-                >📁 FOOTAGE</button>
-              </div>
+              <span className="text-slate-200 font-mono font-bold tracking-widest">LIVE TACTICAL FEED</span>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -446,6 +427,35 @@ export default function Dashboard() {
                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-mono opacity-0 group-hover:opacity-100">{val}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'settings' ? (
+            <div className="flex-1 flex flex-col gap-6 overflow-y-auto max-w-2xl mx-auto w-full p-8">
+              <h2 className="text-xl font-bold font-mono border-b border-slate-800 pb-2">SYSTEM CONFIGURATION</h2>
+              
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col gap-4">
+                <h3 className="text-sm font-bold font-mono text-slate-400">VIDEO SOURCE OVERRIDE</h3>
+                <p className="text-xs text-slate-500 mb-2">The system defaults to high-resolution pre-recorded surveillance footage. You can manually override the feed to a live local webcam here.</p>
+                
+                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => { setSourceMode('file'); videoFileRef.current?.click(); }}
+                    className={`p-6 rounded-lg flex flex-col items-center justify-center gap-3 border-2 transition-all ${sourceMode === 'file' ? 'bg-blue-900/30 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                  >
+                    <span className="text-3xl">📁</span>
+                    <span className="font-mono text-sm font-bold">UPLOAD FOOTAGE</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => { setSourceMode('webcam'); changeSource('0'); }}
+                    className={`p-6 rounded-lg flex flex-col items-center justify-center gap-3 border-2 transition-all ${sourceMode === 'webcam' ? 'bg-orange-900/30 border-orange-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                  >
+                    <span className="text-3xl">📷</span>
+                    <span className="font-mono text-sm font-bold">ENABLE WEBCAM</span>
+                  </button>
                 </div>
               </div>
             </div>

@@ -41,6 +41,8 @@ class AIEngine:
         self.breach_fired = set()  # Reset on new zone
         if len(points) >= 3:
             self.tripwire_polygon = Polygon(points)
+            if not self.tripwire_polygon.is_valid:
+                self.tripwire_polygon = self.tripwire_polygon.convex_hull
         elif len(points) == 2:
             self.tripwire_polygon = LineString(points)
         else:
@@ -67,12 +69,14 @@ class AIEngine:
         foot_y = y2 * scale_y
 
         ground_point = Point(foot_x, foot_y)
+        # Create a small bounding box/circle around the feet to ensure it triggers 
+        # even if it barely touches the line or skips past it fast.
+        feet_area = ground_point.buffer(15.0) 
 
         if isinstance(self.tripwire_polygon, Polygon):
-            return self.tripwire_polygon.contains(ground_point)
+            return self.tripwire_polygon.intersects(feet_area)
         elif isinstance(self.tripwire_polygon, LineString):
-            # For a line, check if the point is within 5px of the line
-            return self.tripwire_polygon.distance(ground_point) < 5
+            return self.tripwire_polygon.intersects(feet_area)
         return False
 
     def _plate_worker(self):
