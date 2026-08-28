@@ -24,6 +24,9 @@ class VideoPipeline:
         if isinstance(src, int) or (isinstance(src, str) and src.isdigit()):
             # USB webcam — use DirectShow + MJPG for full 720p/1080p resolution on Windows
             self.cap = cv2.VideoCapture(int(src), cv2.CAP_DSHOW)
+            if not self.cap.isOpened():
+                self.cap = cv2.VideoCapture(int(src))
+                
             try:
                 if self.cap.isOpened():
                     self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
