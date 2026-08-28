@@ -37,6 +37,7 @@ export default function Home() {
 
   const [events, setEvents] = useState<any[]>([]);
   const [isBreaching, setIsBreaching] = useState(false);
+  const [sosActive, setSosActive] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const [faces, setFaces] = useState<string[]>([]);
 
@@ -71,11 +72,11 @@ export default function Home() {
       const ws = new WebSocket('ws://localhost:8000/ws/events');
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'HEARTBEAT') {
-          setIsBreaching(data.is_breaching);
-        } else if (data.type === 'ALERT') {
-          setEvents(prev => [data.data, ...prev].slice(0, 50));
+        if (data.type === 'SOS_TRIGGERED') {
+          setSosActive(true);
+          setTimeout(() => setSosActive(false), 5000); // 5 sec SOS mode
         }
+        setEvents(prev => [data, ...prev].slice(0, 50));
       };
       ws.onclose = () => setTimeout(connectWS, 2000);
       wsRef.current = ws;
@@ -189,7 +190,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30">
+    <div className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30 ${sosActive ? 'animate-pulse bg-red-950 shadow-[inset_0_0_150px_rgba(255,0,0,0.8)]' : ''}`}>
       
       {/* HUD Header */}
       <header className="h-12 border-b border-red-900/50 flex items-center justify-between px-6 shrink-0 relative">
@@ -206,6 +207,15 @@ export default function Home() {
         </div>
         
         <div className="flex items-center gap-6">
+          <button 
+            onClick={() => {
+              fetch('http://localhost:8000/api/sos', { method: 'POST' }).catch(()=>{});
+              alert("SOS DEPLOYED TO LOCAL AUTHORITIES!");
+            }} 
+            className="px-4 py-0.5 bg-red-900 text-black text-[12px] tracking-widest font-bold animate-pulse hover:bg-red-500 border border-red-500 shadow-[0_0_10px_red]"
+          >
+            TRIGGER SOS
+          </button>
           <div className="flex items-center gap-2 px-3 py-0.5 bg-red-950/20 border border-red-900/50 rounded-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_5px_red]"></span>
             <span className="text-[10px] text-red-400 font-bold tracking-widest">UPLINK ACTIVE</span>
@@ -361,12 +371,7 @@ export default function Home() {
             />
 
             {/* 3D Depth Perimeter Grid & SVG */}
-            {/* The perspective trick renders the flat SVG as an isometric floor plan */}
-            <div className="absolute inset-0 z-20 pointer-events-none" style={{
-              transform: boundaryMode ? 'none' : 'perspective(1000px) rotateX(15deg) scale(0.95)',
-              transformOrigin: 'bottom center',
-              transition: 'transform 0.5s ease'
-            }}>
+            <div className="absolute inset-0 z-20 pointer-events-none">
               <svg 
                 ref={svgRef}
                 className={`w-full h-full ${boundaryMode ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'}`} 
@@ -411,14 +416,16 @@ export default function Home() {
           </div>
           
           {/* Quick HUD Data row */}
-          <div className="h-12 border border-red-900/50 mt-1 bg-black flex items-center justify-between px-4 text-[9px] tracking-widest text-red-500">
-            <div className="flex gap-4">
+          <div className="h-12 border border-red-900/50 mt-1 bg-black flex items-center justify-between px-4 text-[9px] tracking-widest text-red-500 overflow-x-auto shrink-0 scrollbar-none">
+            <div className="flex gap-4 shrink-0 mr-4">
                <span className="flex items-center gap-1"><Activity className="w-3 h-3"/> FPS: 30.1</span>
-               <span className="flex items-center gap-1"><ScanEye className="w-3 h-3"/> YOLOv8n ACTIVE</span>
+               <span className="flex items-center gap-1"><ScanEye className="w-3 h-3"/> YOLOv8n CUDA</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
                <button onClick={() => videoFileRef.current?.click()} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 transition-colors">UPLOAD FEED</button>
+               <button onClick={() => changeSource('uploaded_footage/weapon_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: WEAPON</button>
+               <button onClick={() => changeSource('uploaded_footage/violence_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: VIOLENCE</button>
                <button onClick={() => changeSource('0', 'webcam')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 transition-colors">ACTIVATE WEBCAM</button>
             </div>
           </div>

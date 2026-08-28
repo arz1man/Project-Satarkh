@@ -1,6 +1,7 @@
 import asyncio
 import cv2
 import os
+import time
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,7 +107,9 @@ def generate_frames():
     while True:
         raw_frame, display_frame = video_pipeline.get_frame()
         if raw_frame is None:
-            break
+            # If stream is temporarily down (e.g. source switching) or EOF, wait and retry
+            time.sleep(0.1)
+            continue
             
         # Run AI
         processed_frame, events = ai_engine.process_frame(raw_frame, display_frame)
@@ -123,6 +126,16 @@ def generate_frames():
         # Yield for MJPEG stream
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+@app.post("/api/sos")
+async def trigger_sos():
+    if main_loop:
+        asyncio.run_coroutine_threadsafe(broadcast_event({
+            "id": "SOS-MANUAL",
+            "type": "SOS_TRIGGERED",
+            "timestamp": time.time()
+        }), main_loop)
+    return {"status": "success"}
 
 @app.get("/video_feed")
 def video_feed():
