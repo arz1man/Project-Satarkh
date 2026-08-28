@@ -11,6 +11,7 @@ from deepface import DeepFace
 
 class AIEngine:
     def __init__(self):
+        self.lock = threading.Lock()
         self.model = YOLO('yolov8n.pt')
         
         self.weapon_model = None
