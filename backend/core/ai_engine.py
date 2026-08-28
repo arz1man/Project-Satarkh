@@ -260,9 +260,9 @@ class AIEngine:
                 try:
                     v_res = self.violence_model(raw_frame, verbose=False)[0]
                     for box in v_res.boxes:
-                        if float(box.conf[0]) > 0.5:
+                        if float(box.conf[0]) > 0.65:
                             cls_name = self.violence_model.names[int(box.cls[0])].lower()
-                            if 'violen' in cls_name or 'fight' in cls_name:
+                            if cls_name == 'violence':
                                 x1v, y1v, x2v, y2v = map(int, box.xyxy[0])
                                 cv2.rectangle(display_frame, (x1v, y1v), (x2v, y2v), (0, 0, 255), 3)
                                 cv2.putText(display_frame, "VIOLENCE DETECTED", (x1v, max(y1v - 20, 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3)
