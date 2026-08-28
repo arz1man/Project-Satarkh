@@ -57,14 +57,14 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ points: parsed.map((p: any) => [p.x, p.y]) })
-      });
+      }).catch(() => console.warn("Backend not ready"));
     } else {
       setDrawPoints(defaultZone);
       fetch(`http://localhost:8000/api/tripwire`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ points: defaultZone.map(p => [p.x, p.y]) })
-      });
+      }).catch(() => console.warn("Backend not ready"));
     }
 
     const connectWS = () => {
@@ -140,11 +140,15 @@ export default function Home() {
   const saveBoundary = async () => {
     setBoundaryMode(false);
     localStorage.setItem('satark_zone', JSON.stringify(drawPoints));
-    await fetch(`http://localhost:8000/api/tripwire`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ points: drawPoints.map(p => [p.x, p.y]) })
-    });
+    try {
+      await fetch(`http://localhost:8000/api/tripwire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: drawPoints.map(p => [p.x, p.y]) })
+      });
+    } catch (e) {
+      console.warn("Failed to save boundary to backend", e);
+    }
   };
 
   const resetBoundary = () => {
