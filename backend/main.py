@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import cv2
 import os
 import time
@@ -15,7 +15,7 @@ from core.ai_engine import AIEngine
 # Ensure faces dir exists
 os.makedirs("registered_faces", exist_ok=True)
 
-app = FastAPI(title="Project Satharkh - Backend API")
+app = FastAPI(title="Project Satarkh - Backend API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,7 +46,7 @@ async def startup_event():
 
 @app.get("/")
 def read_root():
-    return {"status": "Satharkh Backend is running"}
+    return {"status": "Satarkh Backend is running"}
 
 @app.post("/api/tripwire")
 def set_tripwire(config: TripwireConfig):

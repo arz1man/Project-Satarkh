@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Project Satharkh | MHA Video Analytics",
+  title: "Project Satarkh | MHA Video Analytics",
   description: "Military-grade real-time computer vision dashboard.",
 };
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Crosshair, Users, Activity, Settings, Video, FileVideo, Save, RotateCcw, Trash2, Shield, Lock, Unlock, AlertTriangle, Target, ScanEye } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default function Home() {
   // Display Toggles
   const [bwFilter, setBwFilter] = useState(false);
   
-  // Advanced Modules (Satharkh visual toggles)
+  // Advanced Modules (Satarkh visual toggles)
   const [modules, setModules] = useState({
     weapon: false,
     anomaly: false,
@@ -54,7 +54,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchFaces();
-    const saved = localStorage.getItem('satharkh_zone');
+    const saved = localStorage.getItem('satarkh_zone');
     if (saved) {
       const parsed = JSON.parse(saved);
       setDrawPoints(parsed);
@@ -187,7 +187,7 @@ export default function Home() {
 
   const saveBoundary = async () => {
     setBoundaryMode(false);
-    localStorage.setItem('satharkh_zone', JSON.stringify(drawPoints));
+    localStorage.setItem('satarkh_zone', JSON.stringify(drawPoints));
     try {
       await fetch(`http://localhost:8000/api/tripwire`, {
         method: 'POST',
@@ -201,7 +201,7 @@ export default function Home() {
 
   const resetBoundary = () => {
     setDrawPoints(defaultZone);
-    localStorage.removeItem('satharkh_zone');
+    localStorage.removeItem('satarkh_zone');
   };
 
   const fetchFaces = async () => {
@@ -246,7 +246,7 @@ export default function Home() {
         
         <div className="flex items-center gap-6">
           <h1 className="font-bold tracking-widest text-red-500 text-lg shadow-red-500/50 drop-shadow-md">
-            PROJECT SATHARKH
+            PROJECT SATARKH
           </h1>
           <div className="text-[10px] tracking-widest uppercase border border-red-900/50 px-2 py-0.5 rounded-sm">
             v9.4.01
@@ -329,7 +329,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Satharkh Modules */}
+                {/* Satarkh Modules */}
                 <div className="border border-red-900/30 p-2">
                   <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Target className="w-3 h-3"/> THREAT MODULES</h3>
                   <div className="flex flex-col gap-1 text-[9px]">
@@ -410,7 +410,7 @@ export default function Home() {
             
             <div className="absolute top-2 left-2 z-30 pointer-events-none text-[9px] tracking-widest">
               <div className="text-red-400">SOURCE: {videoSource === 'file' ? 'TAPE_RECORD' : 'LIVE_FEED'}</div>
-              <div className="text-red-900">COORD: 39.9042° N, 116.4074° E</div>
+              <div className="text-red-900">COORD: 39.9042Â° N, 116.4074Â° E</div>
             </div>
             
             {isBreaching && (
