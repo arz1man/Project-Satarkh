@@ -1,6 +1,7 @@
 ﻿#  Project Satarkh: Intelligent Border Video Analytics Platform
 
-<img width="405" height="271" alt="image" src="https://github.com/user-attachments/assets/f5271ef6-4919-40b8-9904-6962a1f3710e" />
+<img width="282" height="283" alt="image" src="https://github.com/user-attachments/assets/cba8e9df-7dd7-4993-995e-b4df154e988c" />
+
 
 **SIH 2026 Submission | Ministry of Home Affairs (MHA) | PS ID: SIH26187**
 
