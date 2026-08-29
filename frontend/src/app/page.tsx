@@ -18,7 +18,7 @@ export default function Home() {
   // Display Toggles
   const [bwFilter, setBwFilter] = useState(false);
   
-  // Advanced Modules (SentinelAI visual toggles)
+  // Advanced Modules (Satharkh visual toggles)
   const [modules, setModules] = useState({
     weapon: false,
     anomaly: false,
@@ -54,7 +54,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchFaces();
-    const saved = localStorage.getItem('satark_zone');
+    const saved = localStorage.getItem('satharkh_zone');
     if (saved) {
       const parsed = JSON.parse(saved);
       setDrawPoints(parsed);
@@ -187,7 +187,7 @@ export default function Home() {
 
   const saveBoundary = async () => {
     setBoundaryMode(false);
-    localStorage.setItem('satark_zone', JSON.stringify(drawPoints));
+    localStorage.setItem('satharkh_zone', JSON.stringify(drawPoints));
     try {
       await fetch(`http://localhost:8000/api/tripwire`, {
         method: 'POST',
@@ -201,7 +201,7 @@ export default function Home() {
 
   const resetBoundary = () => {
     setDrawPoints(defaultZone);
-    localStorage.removeItem('satark_zone');
+    localStorage.removeItem('satharkh_zone');
   };
 
   const fetchFaces = async () => {
@@ -246,7 +246,7 @@ export default function Home() {
         
         <div className="flex items-center gap-6">
           <h1 className="font-bold tracking-widest text-red-500 text-lg shadow-red-500/50 drop-shadow-md">
-            PROJECT SATARKH
+            PROJECT SATHARKH
           </h1>
           <div className="text-[10px] tracking-widest uppercase border border-red-900/50 px-2 py-0.5 rounded-sm">
             v9.4.01
@@ -329,7 +329,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Sentinel Modules */}
+                {/* Satharkh Modules */}
                 <div className="border border-red-900/30 p-2">
                   <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Target className="w-3 h-3"/> THREAT MODULES</h3>
                   <div className="flex flex-col gap-1 text-[9px]">

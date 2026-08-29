@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Project Satark | MHA Video Analytics",
+  title: "Project Satharkh | MHA Video Analytics",
   description: "Military-grade real-time computer vision dashboard.",
 };
 

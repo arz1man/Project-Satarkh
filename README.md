@@ -1,4 +1,4 @@
-# Project Satarkh: Intelligent Border Video Analytics Platform
+# Project Satharkh: Intelligent Border Video Analytics Platform
 <img width="405" height="271" alt="image" src="https://github.com/user-attachments/assets/f5271ef6-4919-40b8-9904-6962a1f3710e" />
 
 SIH 2026 Submission | Ministry of Home Affairs (MHA) | PS ID: SIH26187
@@ -8,7 +8,7 @@ An autonomous, edge-deployed computer vision platform designed to transform lega
 Problem Statement
 Conventional border outposts rely on standard IP CCTV cameras requiring continuous human observation. Fatigue and visual overload result in undetected breaches. Proprietary smart-cameras are cost-prohibitive for large-scale remote deployment.
 
-The Solution: Project Satarkh acts as a software-defined intelligence layer. It ingests standard RTSP video feeds and utilizes lightweight, high-performance object detection models (YOLOv8) to identify, track, and log unauthorized perimeter breaches in real-time.
+The Solution: Project Satharkh acts as a software-defined intelligence layer. It ingests standard RTSP video feeds and utilizes lightweight, high-performance object detection models (YOLOv8) to identify, track, and log unauthorized perimeter breaches in real-time.
 
 Core Capabilities
 [+] Virtual Geofencing: Dynamic polygonal tripwires mapped directly onto camera feeds.

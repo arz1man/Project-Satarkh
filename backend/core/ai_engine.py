@@ -288,7 +288,7 @@ class AIEngine:
             is_poly = isinstance(self.tripwire_polygon, Polygon)
             cv2.polylines(display_frame, [pts], is_poly, (0, 165, 255), 2)
 
-        # --- SENTINEL AI MODULES (WEAPON & VIOLENCE) ---
+        # --- SATHARKH AI MODULES (WEAPON & VIOLENCE) ---
         if self.frame_count % 3 == 0:
             if self.weapon_model:
                 try:
