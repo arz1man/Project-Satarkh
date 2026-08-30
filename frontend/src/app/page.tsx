@@ -483,10 +483,6 @@ export default function Home() {
             <div className="flex gap-2 shrink-0">
                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
                <button onClick={() => videoFileRef.current?.click()} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 transition-colors">UPLOAD FEED</button>
-               <button onClick={() => changeSource('uploaded_footage/weapon_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: WEAPON</button>
-               <button onClick={() => changeSource('uploaded_footage/violence_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: VIOLENCE</button>
-               <button onClick={() => changeSource('uploaded_footage/face_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: FACE</button>
-               <button onClick={() => changeSource('uploaded_footage/plate_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: PLATE</button>
                <button onClick={() => changeSource('0', 'webcam')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 transition-colors">ACTIVATE WEBCAM</button>
             </div>
           </div>
