@@ -422,7 +422,7 @@ export default function Home() {
             
             <div className="absolute top-2 left-2 z-30 pointer-events-none text-[9px] tracking-widest">
               <div className="text-red-400">SOURCE: {videoSource === 'file' ? 'TAPE_RECORD' : 'LIVE_FEED'}</div>
-              <div className="text-red-900">COORD: 39.9042Â° N, 116.4074Â° E</div>
+              <div className="text-red-900">COORD: 39.9042Ã‚Â° N, 116.4074Ã‚Â° E</div>
             </div>
             
             {isBreaching && (
@@ -436,10 +436,10 @@ export default function Home() {
               {/* Dark overlay for sci-fi contrast */}
               <div className="absolute inset-0 bg-red-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
 
-              <div className="absolute inset-0 z-10" style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}>
+              <div className="absolute inset-0 z-10 mix-blend-screen" style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}>
                 <img 
                   src="http://localhost:8000/video_feed" 
-                  className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 mix-blend-screen contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
+                  className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
                   draggable={false} 
                 />
               </div>
