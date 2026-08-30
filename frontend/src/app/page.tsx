@@ -486,6 +486,7 @@ export default function Home() {
                <button onClick={() => changeSource('uploaded_footage/weapon_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: WEAPON</button>
                <button onClick={() => changeSource('uploaded_footage/violence_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: VIOLENCE</button>
                <button onClick={() => changeSource('uploaded_footage/face_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: FACE</button>
+               <button onClick={() => changeSource('uploaded_footage/plate_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: PLATE</button>
                <button onClick={() => changeSource('0', 'webcam')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 transition-colors">ACTIVATE WEBCAM</button>
             </div>
           </div>
