@@ -193,13 +193,13 @@ class AIEngine:
                     plate = self._extract_license_plate(raw_frame, box, track_id)
 
                 # --- BOUNDING BOX COLOR ---
-                # Red = breaching, Yellow = known person, Blue = normal
+                # Red = breaching, Yellow = known person, Green = normal
                 if is_breaching:
                     color = (0, 0, 255)   # Red
                 elif face_status and face_status.startswith("KNOWN"):
                     color = (0, 255, 255) # Yellow
                 else:
-                    color = (255, 140, 0) # Blue/Orange
+                    color = (0, 255, 0)   # Bright Neon Green
 
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
 
