@@ -88,22 +88,6 @@ export default function Home() {
         if (data.type === 'SOS_TRIGGERED' || isCritical) {
           setSosActive(true);
           setTimeout(() => setSosActive(false), 5000); // 5 sec SOS mode
-          
-          // Play Sci-Fi Alarm Sound
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(800, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.3);
-          } catch (e) {}
         }
         
         if (isCritical) {
@@ -239,7 +223,7 @@ export default function Home() {
 
   return (
     <div 
-      className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30 ${sosActive ? 'animate-pulse bg-red-950 shadow-[inset_0_0_150px_rgba(255,0,0,0.8)]' : ''}`}
+      className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30`}
       style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}
     >
       
