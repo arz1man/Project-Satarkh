@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import os
 
+import threading
+
 DEMO_VIDEO_PATH = "demo.mp4"
 
 class VideoPipeline:
@@ -11,13 +13,15 @@ class VideoPipeline:
             source = DEMO_VIDEO_PATH if os.path.exists(DEMO_VIDEO_PATH) else 0
         self.source = source
         self.night_vision_enabled = False
+        self.lock = threading.Lock()
         self._init_camera()
 
     def change_source(self, new_source):
-        self.source = new_source
-        if self.cap:
-            self.cap.release()
-        self._init_camera()
+        with self.lock:
+            self.source = new_source
+            if self.cap:
+                self.cap.release()
+            self._init_camera()
 
     def _init_camera(self):
         src = self.source
@@ -57,14 +61,15 @@ class VideoPipeline:
         if not self.cap or not self.cap.isOpened():
             return None, None
 
-        success, frame = self.cap.read()
-        if not success:
-            # Loop video file when it ends (great for demo footage)
-            if isinstance(self.source, str) and not self.source.isdigit():
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                success, frame = self.cap.read()
+        with self.lock:
+            success, frame = self.cap.read()
             if not success:
-                return None, None
+                # Loop video file when it ends (great for demo footage)
+                if isinstance(self.source, str) and not self.source.isdigit():
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    success, frame = self.cap.read()
+                if not success:
+                    return None, None
 
         # FORCE RESIZE TO 1280x720
         # This guarantees a perfect 16:9 aspect ratio so the frontend SVG viewBox
