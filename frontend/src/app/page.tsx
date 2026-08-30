@@ -410,7 +410,7 @@ export default function Home() {
             </div>
             
             {isBreaching && (
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-red-600/90 text-black font-black px-8 py-1 tracking-[0.3em] border border-red-400 animate-pulse pointer-events-none shadow-[0_0_20px_red] text-sm backdrop-blur-sm">
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-red-600/90 text-black font-black px-8 py-1 tracking-[0.3em] border border-red-400 pointer-events-none shadow-[0_0_20px_red] text-sm backdrop-blur-sm">
                 ANOMALY DETECTED IN SECTOR 4
               </div>
             )}
@@ -423,7 +423,7 @@ export default function Home() {
               <div className="absolute inset-0 z-10 mix-blend-screen" style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}>
                 <img 
                   src="http://localhost:8000/video_feed" 
-                  className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
+                  className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 contrast-125 ${bwFilter ? 'saturate-0' : ''} brightness-75`} 
                   draggable={false} 
                 />
               </div>
