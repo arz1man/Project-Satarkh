@@ -1,6 +1,6 @@
 ﻿#  Project Satarkh: Intelligent Border Video Analytics Platform
 
-       <img width="282" height="283" alt="image" src="https://github.com/user-attachments/assets/cba8e9df-7dd7-4993-995e-b4df154e988c" />
+<img width="282" height="283" alt="image" src="https://github.com/user-attachments/assets/cba8e9df-7dd7-4993-995e-b4df154e988c" />
 
 
 **SIH 2026 Submission | Ministry of Home Affairs (MHA) | PS ID: SIH26187**
@@ -11,9 +11,9 @@ An autonomous, edge-deployed computer vision platform designed to transform lega
 
 <img width="715" height="387" alt="image" src="https://github.com/user-attachments/assets/161d2f84-6c89-4986-bacf-abcfc069c934" />
 
-## ✨ Key AI Modules & Features
+##  Key AI Modules & Features
 
-### ⚔️ Real-Time Weapon Detection
+###  Real-Time Weapon Detection
 * Integrates a dedicated computer vision model to scan frames for firearms, knives, and other lethal weapons.
 * Instantly triggers a **CRITICAL** alert, firing a global SOS visual and audio siren on the dashboard the moment a weapon is unholstered or visible in the camera feed.
 
