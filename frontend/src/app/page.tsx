@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Crosshair, Users, Activity, Settings, Video, FileVideo, Save, RotateCcw, Trash2, Shield, Lock, Unlock, AlertTriangle, Target, ScanEye } from 'lucide-react';
 
@@ -17,6 +17,7 @@ export default function Home() {
   
   // Display Toggles
   const [bwFilter, setBwFilter] = useState(false);
+  const [lightTheme, setLightTheme] = useState(false);
   
   // Advanced Modules (Satarkh visual toggles)
   const [modules, setModules] = useState({
@@ -237,7 +238,10 @@ export default function Home() {
   };
 
   return (
-    <div className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30 ${sosActive ? 'animate-pulse bg-red-950 shadow-[inset_0_0_150px_rgba(255,0,0,0.8)]' : ''}`}>
+    <div 
+      className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30 ${sosActive ? 'animate-pulse bg-red-950 shadow-[inset_0_0_150px_rgba(255,0,0,0.8)]' : ''}`}
+      style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}
+    >
       
       {/* HUD Header */}
       <header className="h-12 border-b border-red-900/50 flex items-center justify-between px-6 shrink-0 relative">
@@ -355,12 +359,20 @@ export default function Home() {
                 {/* Display Config */}
                 <div className="border border-red-900/30 p-2">
                   <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Video className="w-3 h-3"/> DISPLAY CONFIG</h3>
-                  <button 
-                    onClick={() => setBwFilter(!bwFilter)} 
-                    className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${bwFilter ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
-                  >
-                    B&W FILTER: {bwFilter ? 'ON' : 'OFF'}
-                  </button>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button 
+                      onClick={() => setBwFilter(!bwFilter)} 
+                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${bwFilter ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
+                    >
+                      B&W: {bwFilter ? 'ON' : 'OFF'}
+                    </button>
+                    <button 
+                      onClick={() => setLightTheme(!lightTheme)} 
+                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${lightTheme ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
+                    >
+                      THEME: {lightTheme ? 'LIGHT' : 'DARK'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Face DB */}
@@ -424,11 +436,13 @@ export default function Home() {
               {/* Dark overlay for sci-fi contrast */}
               <div className="absolute inset-0 bg-red-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
 
-              <img 
-                src="http://localhost:8000/video_feed" 
-                className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 mix-blend-screen contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
-                draggable={false} 
-              />
+              <div className="absolute inset-0 z-10" style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}>
+                <img 
+                  src="http://localhost:8000/video_feed" 
+                  className={`absolute inset-0 w-full h-full object-contain select-none opacity-80 mix-blend-screen contrast-125 ${bwFilter ? 'saturate-0' : ''} ${isBreaching ? 'sepia-[.8] hue-rotate-[-30deg] saturate-150' : 'brightness-75'}`} 
+                  draggable={false} 
+                />
+              </div>
 
               {/* 3D Depth Perimeter Grid & SVG */}
               <div className="absolute inset-0 z-20 pointer-events-none">
