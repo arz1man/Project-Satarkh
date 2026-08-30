@@ -1,6 +1,7 @@
 ﻿import asyncio
 import cv2
 import os
+import re
 import time
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
@@ -37,6 +38,11 @@ class TripwireConfig(BaseModel):
 class SourceConfig(BaseModel):
     source: str
 
+def safe_filename(filename: str) -> str:
+    """Strip path separators and control characters from an incoming filename."""
+    name = os.path.basename(filename.replace("\\", "/"))
+    return re.sub(r"[^\w.\- ]", "_", name).strip()
+
 main_loop = None
 
 @app.on_event("startup")
@@ -72,7 +78,7 @@ def get_faces():
 
 @app.post("/api/faces")
 async def add_face(file: UploadFile = File(...)):
-    path = os.path.join("registered_faces", file.filename)
+    path = os.path.join("registered_faces", safe_filename(file.filename))
     with open(path, "wb") as f:
         content = await file.read()
         f.write(content)
@@ -80,7 +86,7 @@ async def add_face(file: UploadFile = File(...)):
 
 @app.delete("/api/faces/{filename}")
 def delete_face(filename: str):
-    path = os.path.join("registered_faces", filename)
+    path = os.path.join("registered_faces", safe_filename(filename))
     if os.path.exists(path):
         os.remove(path)
     return {"status": "success"}
@@ -88,7 +94,7 @@ def delete_face(filename: str):
 @app.post("/api/upload_video")
 async def upload_video(file: UploadFile = File(...)):
     os.makedirs("uploaded_footage", exist_ok=True)
-    save_path = os.path.join("uploaded_footage", file.filename)
+    save_path = os.path.join("uploaded_footage", safe_filename(file.filename))
     with open(save_path, "wb") as f:
         content = await file.read()
         f.write(content)
