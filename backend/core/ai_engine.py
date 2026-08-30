@@ -218,8 +218,8 @@ class AIEngine:
                 if plate:
                     label += f" | {plate}"
 
-                cv2.putText(display_frame, label, (x1, max(y1 - 10, 12)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+                cv2.putText(display_frame, label, (x1, max(y1 - 10, 15)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
                 # Draw ground contact dot (perspective-correct point used for zone detection)
                 foot_x = (x1 + x2) // 2
