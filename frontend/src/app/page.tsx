@@ -223,20 +223,20 @@ export default function Home() {
 
   return (
     <div 
-      className={`flex flex-col h-screen bg-black text-red-500 font-mono overflow-hidden selection:bg-red-500/30`}
+      className={`flex flex-col h-screen bg-black text-cyan-500 font-mono overflow-hidden selection:bg-cyan-500/30`}
       style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}
     >
       
       {/* HUD Header */}
-      <header className="h-12 border-b border-red-900/50 flex items-center justify-between px-6 shrink-0 relative">
-        <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-red-500"></div>
-        <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-red-500"></div>
+      <header className="h-12 border-b border-cyan-900/50 flex items-center justify-between px-6 shrink-0 relative">
+        <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-cyan-500"></div>
+        <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-cyan-500"></div>
         
         <div className="flex items-center gap-6">
-          <h1 className="font-bold tracking-widest text-red-500 text-lg shadow-red-500/50 drop-shadow-md">
+          <h1 className="font-bold tracking-widest text-cyan-500 text-lg shadow-cyan-500/50 drop-shadow-md">
             PROJECT SATARKH
           </h1>
-          <div className="text-[10px] tracking-widest uppercase border border-red-900/50 px-2 py-0.5 rounded-sm">
+          <div className="text-[10px] tracking-widest uppercase border border-cyan-900/50 px-2 py-0.5 rounded-sm">
             v9.4.01
           </div>
         </div>
@@ -247,15 +247,15 @@ export default function Home() {
               fetch('http://localhost:8000/api/sos', { method: 'POST' }).catch(()=>{});
               alert("SOS DEPLOYED TO LOCAL AUTHORITIES!");
             }} 
-            className="px-4 py-0.5 bg-red-900 text-black text-[12px] tracking-widest font-bold animate-pulse hover:bg-red-500 border border-red-500 shadow-[0_0_10px_red]"
+            className="px-4 py-0.5 bg-cyan-900 text-black text-[12px] tracking-widest font-bold animate-pulse hover:bg-cyan-500 border border-cyan-500 shadow-[0_0_10px_cyan]"
           >
             TRIGGER SOS
           </button>
-          <div className="flex items-center gap-2 px-3 py-0.5 bg-red-950/20 border border-red-900/50 rounded-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_5px_red]"></span>
-            <span className="text-[10px] text-red-400 font-bold tracking-widest">UPLINK ACTIVE</span>
+          <div className="flex items-center gap-2 px-3 py-0.5 bg-cyan-950/20 border border-cyan-900/50 rounded-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_5px_cyan]"></span>
+            <span className="text-[10px] text-cyan-400 font-bold tracking-widest">UPLINK ACTIVE</span>
           </div>
-          <div className="text-[10px] text-red-500 flex items-center gap-2 font-bold tracking-widest">
+          <div className="text-[10px] text-cyan-500 flex items-center gap-2 font-bold tracking-widest">
             {currentTime}
           </div>
         </div>
@@ -265,94 +265,94 @@ export default function Home() {
       <main className="flex-1 grid grid-cols-12 gap-1 p-2 overflow-hidden relative">
         
         {/* Decorative Grid Background */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{backgroundImage: 'linear-gradient(rgba(255,0,0,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,0,1) 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{backgroundImage: 'linear-gradient(rgba(0,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,1) 1px, transparent 1px)', backgroundSize: '50px 50px'}}></div>
 
         {/* LEFT COLUMN: Controls & Security */}
         <div className="col-span-3 flex flex-col gap-1 min-h-0 z-10">
           
-          <div className="border border-red-900/50 bg-black/80 flex-1 p-4 flex flex-col relative">
-            <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-red-500"></div>
+          <div className="border border-cyan-900/50 bg-black/80 flex-1 p-4 flex flex-col relative">
+            <div className="absolute top-0 left-0 w-2 h-2 border-l border-t border-cyan-500"></div>
             
-            <h2 className="text-[10px] tracking-widest uppercase border-b border-red-900/50 pb-2 mb-4 text-red-400">
+            <h2 className="text-[10px] tracking-widest uppercase border-b border-cyan-900/50 pb-2 mb-4 text-cyan-400">
               System Control & Access
             </h2>
             
             {!isUnlocked ? (
               <div className="flex-1 flex flex-col items-center justify-center">
-                <Lock className="w-12 h-12 text-red-900 mb-4" />
-                <p className="text-[10px] text-red-500 mb-4 text-center">ACCESS RESTRICTED<br/>AUTHORIZATION REQUIRED</p>
+                <Lock className="w-12 h-12 text-cyan-900 mb-4" />
+                <p className="text-[10px] text-cyan-500 mb-4 text-center">ACCESS RESTRICTED<br/>AUTHORIZATION REQUIRED</p>
                 <form onSubmit={handleUnlock} className="flex flex-col gap-2 w-full max-w-[200px]">
                   <input 
                     type="password" 
                     value={passcode} 
                     onChange={e => setPasscode(e.target.value)}
-                    className="bg-black border border-red-900/50 text-red-500 text-center text-xs py-1 outline-none focus:border-red-500 placeholder-red-900/50 tracking-widest"
+                    className="bg-black border border-cyan-900/50 text-cyan-500 text-center text-xs py-1 outline-none focus:border-cyan-500 placeholder-cyan-900/50 tracking-widest"
                     placeholder="PASSCODE"
                   />
-                  <button type="submit" className="border border-red-900 hover:border-red-500 text-[10px] py-1 transition-colors hover:bg-red-950/30">
+                  <button type="submit" className="border border-cyan-900 hover:border-cyan-500 text-[10px] py-1 transition-colors hover:bg-cyan-950/30">
                     AUTHENTICATE
                   </button>
                 </form>
-                <p className="text-[8px] text-red-900 mt-4">(Hint: ADMIN)</p>
+                <p className="text-[8px] text-cyan-900 mt-4">(Hint: ADMIN)</p>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-red-900">
+              <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-cyan-900">
                 
                 {/* Zone Config */}
-                <div className="border border-red-900/30 p-2">
-                  <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Crosshair className="w-3 h-3"/> 3D PERIMETER ZONE</h3>
+                <div className="border border-cyan-900/30 p-2">
+                  <h3 className="text-[9px] text-cyan-400 tracking-widest mb-2 flex items-center gap-1"><Crosshair className="w-3 h-3"/> 3D PERIMETER ZONE</h3>
                   {boundaryMode ? (
                     <div className="flex gap-1">
-                      <button onClick={saveBoundary} className="flex-1 border border-red-500 bg-red-950/30 hover:bg-red-900 text-red-500 py-1 text-[9px] tracking-widest transition-colors">
+                      <button onClick={saveBoundary} className="flex-1 border border-cyan-500 bg-cyan-950/30 hover:bg-cyan-900 text-cyan-500 py-1 text-[9px] tracking-widest transition-colors">
                         LOCK ZONE
                       </button>
-                      <button onClick={resetBoundary} className="px-2 border border-red-900 hover:border-red-500 text-red-500 transition-colors">
+                      <button onClick={resetBoundary} className="px-2 border border-cyan-900 hover:border-cyan-500 text-cyan-500 transition-colors">
                         <RotateCcw className="w-3 h-3" />
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => setBoundaryMode(true)} className="w-full border border-red-900 hover:border-red-500 text-[9px] tracking-widest py-1 transition-colors text-red-400">
+                    <button onClick={() => setBoundaryMode(true)} className="w-full border border-cyan-900 hover:border-cyan-500 text-[9px] tracking-widest py-1 transition-colors text-cyan-400">
                       EDIT ZONE (3D GRID)
                     </button>
                   )}
                 </div>
 
                 {/* Satarkh Modules */}
-                <div className="border border-red-900/30 p-2">
-                  <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Target className="w-3 h-3"/> THREAT MODULES</h3>
+                <div className="border border-cyan-900/30 p-2">
+                  <h3 className="text-[9px] text-cyan-400 tracking-widest mb-2 flex items-center gap-1"><Target className="w-3 h-3"/> THREAT MODULES</h3>
                   <div className="flex flex-col gap-1 text-[9px]">
-                    <div className="flex justify-between border-b border-red-900/20 pb-1">
-                      <span className="text-red-500">WEAPON DETECT</span>
-                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
+                    <div className="flex justify-between border-b border-cyan-900/20 pb-1">
+                      <span className="text-cyan-500">WEAPON DETECT</span>
+                      <span className="text-cyan-400 shadow-cyan-500 drop-shadow-md">ONLINE</span>
                     </div>
-                    <div className="flex justify-between border-b border-red-900/20 pb-1">
-                      <span className="text-red-500">ANOMALY DETECT</span>
-                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
+                    <div className="flex justify-between border-b border-cyan-900/20 pb-1">
+                      <span className="text-cyan-500">ANOMALY DETECT</span>
+                      <span className="text-cyan-400 shadow-cyan-500 drop-shadow-md">ONLINE</span>
                     </div>
-                    <div className="flex justify-between border-b border-red-900/20 pb-1">
-                      <span className="text-red-500">FACIAL RECOGNITION</span>
-                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
+                    <div className="flex justify-between border-b border-cyan-900/20 pb-1">
+                      <span className="text-cyan-500">FACIAL RECOGNITION</span>
+                      <span className="text-cyan-400 shadow-cyan-500 drop-shadow-md">ONLINE</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-red-500">ALPR TRACKING</span>
-                      <span className="text-red-400 shadow-red-500 drop-shadow-md">ONLINE</span>
+                      <span className="text-cyan-500">ALPR TRACKING</span>
+                      <span className="text-cyan-400 shadow-cyan-500 drop-shadow-md">ONLINE</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Display Config */}
-                <div className="border border-red-900/30 p-2">
-                  <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center gap-1"><Video className="w-3 h-3"/> DISPLAY CONFIG</h3>
+                <div className="border border-cyan-900/30 p-2">
+                  <h3 className="text-[9px] text-cyan-400 tracking-widest mb-2 flex items-center gap-1"><Video className="w-3 h-3"/> DISPLAY CONFIG</h3>
                   <div className="grid grid-cols-2 gap-1">
                     <button 
                       onClick={() => setBwFilter(!bwFilter)} 
-                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${bwFilter ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
+                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${bwFilter ? 'border-cyan-500 bg-cyan-950/30 text-cyan-500' : 'border-cyan-900 text-red-700 hover:border-cyan-500 hover:text-cyan-500'}`}
                     >
                       B&W: {bwFilter ? 'ON' : 'OFF'}
                     </button>
                     <button 
                       onClick={() => setLightTheme(!lightTheme)} 
-                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${lightTheme ? 'border-red-500 bg-red-950/30 text-red-500' : 'border-red-900 text-red-700 hover:border-red-500 hover:text-red-500'}`}
+                      className={`w-full border text-[9px] tracking-widest py-1 transition-colors ${lightTheme ? 'border-cyan-500 bg-cyan-950/30 text-cyan-500' : 'border-cyan-900 text-red-700 hover:border-cyan-500 hover:text-cyan-500'}`}
                     >
                       THEME: {lightTheme ? 'LIGHT' : 'DARK'}
                     </button>
@@ -360,20 +360,20 @@ export default function Home() {
                 </div>
 
                 {/* Face DB */}
-                <div className="border border-red-900/30 p-2 flex-1 flex flex-col min-h-0">
-                  <h3 className="text-[9px] text-red-400 tracking-widest mb-2 flex items-center justify-between">
+                <div className="border border-cyan-900/30 p-2 flex-1 flex flex-col min-h-0">
+                  <h3 className="text-[9px] text-cyan-400 tracking-widest mb-2 flex items-center justify-between">
                     <span className="flex items-center gap-1"><Users className="w-3 h-3"/> FACIAL DATABASE</span>
                     <span>[{faces.length}]</span>
                   </h3>
                   <input type="file" accept="image/*" className="hidden" ref={faceFileRef} onChange={handleFaceUpload} />
-                  <button onClick={() => faceFileRef.current?.click()} className="w-full border border-red-900 hover:border-red-500 text-[9px] tracking-widest py-1 transition-colors text-red-400 mb-2">
+                  <button onClick={() => faceFileRef.current?.click()} className="w-full border border-cyan-900 hover:border-cyan-500 text-[9px] tracking-widest py-1 transition-colors text-cyan-400 mb-2">
                     + REGISTER ENTITY
                   </button>
-                  <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-red-900">
+                  <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-cyan-900">
                     {faces.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between bg-red-950/20 border border-red-900/50 p-1 group">
+                      <div key={i} className="flex items-center justify-between bg-cyan-950/20 border border-cyan-900/50 p-1 group">
                         <span className="text-[9px] text-red-300 uppercase tracking-widest">{f.split('.')[0]}</span>
-                        <button onClick={() => deleteFace(f)} className="text-red-900 group-hover:text-red-500">
+                        <button onClick={() => deleteFace(f)} className="text-cyan-900 group-hover:text-cyan-500">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -381,7 +381,7 @@ export default function Home() {
                   </div>
                 </div>
                 
-                <button onClick={() => setIsUnlocked(false)} className="border border-red-900 hover:border-red-500 text-red-600 text-[9px] tracking-widest py-1 flex items-center justify-center gap-1 transition-colors mt-auto">
+                <button onClick={() => setIsUnlocked(false)} className="border border-cyan-900 hover:border-cyan-500 text-cyan-600 text-[9px] tracking-widest py-1 flex items-center justify-center gap-1 transition-colors mt-auto">
                   <Lock className="w-3 h-3"/> LOCK SYSTEM
                 </button>
               </div>
@@ -392,25 +392,25 @@ export default function Home() {
         {/* CENTER COLUMN: Tactical Feed (3D Isometric Vibe) */}
         <div className="col-span-6 flex flex-col min-h-0 z-10 relative">
           
-          <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-red-500 pointer-events-none z-50"></div>
-          <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-red-500 pointer-events-none z-50"></div>
-          <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-red-500 pointer-events-none z-50"></div>
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-red-500 pointer-events-none z-50"></div>
+          <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-cyan-500 pointer-events-none z-50"></div>
+          <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-cyan-500 pointer-events-none z-50"></div>
+          <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-cyan-500 pointer-events-none z-50"></div>
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-cyan-500 pointer-events-none z-50"></div>
 
-          <div className={`relative flex-1 bg-black border ${isBreaching ? 'border-red-500 shadow-[0_0_30px_rgba(255,0,0,0.4)]' : 'border-red-900/30'} overflow-hidden flex items-center justify-center group`}>
+          <div className={`relative flex-1 bg-black border ${isBreaching ? 'border-cyan-500 shadow-[0_0_30px_rgba(0,255,255,0.4)]' : 'border-cyan-900/30'} overflow-hidden flex items-center justify-center group`}>
             
             {/* Visual Crosshairs Center */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-red-900/50 rounded-full pointer-events-none z-10 flex items-center justify-center">
-              <div className="w-1 h-1 bg-red-500/50 rounded-full"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-cyan-900/50 rounded-full pointer-events-none z-10 flex items-center justify-center">
+              <div className="w-1 h-1 bg-cyan-500/50 rounded-full"></div>
             </div>
             
             <div className="absolute top-2 left-2 z-30 pointer-events-none text-[9px] tracking-widest">
-              <div className="text-red-400">SOURCE: {videoSource === 'file' ? 'TAPE_RECORD' : 'LIVE_FEED'}</div>
-              <div className="text-red-900">COORD: 39.9042Ã‚Â° N, 116.4074Ã‚Â° E</div>
+              <div className="text-cyan-400">SOURCE: {videoSource === 'file' ? 'TAPE_RECORD' : 'LIVE_FEED'}</div>
+              <div className="text-cyan-900">COORD: 39.9042Ã‚Â° N, 116.4074Ã‚Â° E</div>
             </div>
             
             {isBreaching && (
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-red-600/90 text-black font-black px-8 py-1 tracking-[0.3em] border border-red-400 pointer-events-none shadow-[0_0_20px_red] text-sm backdrop-blur-sm">
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-cyan-600/90 text-black font-black px-8 py-1 tracking-[0.3em] border border-cyan-400 pointer-events-none shadow-[0_0_20px_cyan] text-sm backdrop-blur-sm">
                 ANOMALY DETECTED IN SECTOR 4
               </div>
             )}
@@ -418,7 +418,7 @@ export default function Home() {
             {/* Aspect Video Wrapper to prevent coordinate drift */}
             <div className="relative w-full aspect-video max-h-full flex items-center justify-center">
               {/* Dark overlay for sci-fi contrast */}
-              <div className="absolute inset-0 bg-red-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
+              <div className="absolute inset-0 bg-cyan-900/10 mix-blend-color-burn pointer-events-none z-30"></div>
 
               <div className="absolute inset-0 z-10 mix-blend-screen" style={{ filter: lightTheme ? 'invert(1) hue-rotate(180deg)' : 'none', transition: 'filter 0.3s' }}>
                 <img 
@@ -453,8 +453,8 @@ export default function Home() {
                   {drawPoints.length > 2 && (
                     <polygon 
                       points={drawPoints.map(p => `${p.x},${p.y}`).join(' ')} 
-                      fill={isBreaching ? "rgba(255, 0, 0, 0.2)" : "rgba(255, 0, 0, 0.05)"} 
-                      stroke="#ff0000" 
+                      fill={isBreaching ? "rgba(0, 255, 255, 0.2)" : "rgba(0, 255, 255, 0.05)"} 
+                      stroke="#00ffff" 
                       strokeWidth="1.5" 
                       strokeDasharray={boundaryMode ? "5 5" : "none"}
                       className={isBreaching ? 'animate-pulse' : ''}
@@ -465,7 +465,7 @@ export default function Home() {
                   {boundaryMode && drawPoints.map((p, i) => (
                     <g key={i}>
                       <circle cx={p.x} cy={p.y} r="30" fill="transparent" className="cursor-grab active:cursor-grabbing pointer-events-auto" onMouseDown={(e) => handlePointerDown(i, e)} onTouchStart={(e) => handlePointerDown(i, e)} />
-                      <circle cx={p.x} cy={p.y} r="4" fill={draggingIdx === i ? "#fff" : "#ff0000"} stroke="#ff0000" strokeWidth="1" className="pointer-events-none shadow-[0_0_10px_red]" />
+                      <circle cx={p.x} cy={p.y} r="4" fill={draggingIdx === i ? "#fff" : "#00ffff"} stroke="#00ffff" strokeWidth="1" className="pointer-events-none shadow-[0_0_10px_cyan]" />
                       <text x={p.x + 10} y={p.y - 10} fill="red" fontSize="12" fontFamily="monospace" opacity="0.6">P{i}</text>
                     </g>
                   ))}
@@ -475,19 +475,19 @@ export default function Home() {
           </div>
           
           {/* Quick HUD Data row */}
-          <div className="h-12 border border-red-900/50 mt-1 bg-black flex items-center justify-between px-4 text-[9px] tracking-widest text-red-500 overflow-x-auto shrink-0 scrollbar-none">
+          <div className="h-12 border border-cyan-900/50 mt-1 bg-black flex items-center justify-between px-4 text-[9px] tracking-widest text-cyan-500 overflow-x-auto shrink-0 scrollbar-none">
             <div className="flex gap-4 shrink-0 mr-4">
                <span className="flex items-center gap-1"><Activity className="w-3 h-3"/> FPS: {fps > 0 ? fps.toFixed(1) : 'CALC...'}</span>
                <span className="flex items-center gap-1"><ScanEye className="w-3 h-3"/> YOLOv8n CUDA</span>
             </div>
             <div className="flex gap-2 shrink-0">
                <input type="file" accept="video/*" className="hidden" ref={videoFileRef} onChange={handleVideoFileUpload} />
-               <button onClick={() => videoFileRef.current?.click()} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 transition-colors">UPLOAD FEED</button>
-               <button onClick={() => changeSource('uploaded_footage/weapon_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: WEAPON</button>
-               <button onClick={() => changeSource('uploaded_footage/violence_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: VIOLENCE</button>
-               <button onClick={() => changeSource('uploaded_footage/face_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: FACE</button>
-               <button onClick={() => changeSource('uploaded_footage/plate_demo.mp4', 'file')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 text-red-400 transition-colors">DEMO: PLATE</button>
-               <button onClick={() => changeSource('0', 'webcam')} className="border border-red-900 px-2 py-0.5 hover:bg-red-950/50 transition-colors">ACTIVATE WEBCAM</button>
+               <button onClick={() => videoFileRef.current?.click()} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 transition-colors">UPLOAD FEED</button>
+               <button onClick={() => changeSource('uploaded_footage/weapon_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: WEAPON</button>
+               <button onClick={() => changeSource('uploaded_footage/violence_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: VIOLENCE</button>
+               <button onClick={() => changeSource('uploaded_footage/face_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: FACE</button>
+               <button onClick={() => changeSource('uploaded_footage/plate_demo.mp4', 'file')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 text-cyan-400 transition-colors">DEMO: PLATE</button>
+               <button onClick={() => changeSource('0', 'webcam')} className="border border-cyan-900 px-2 py-0.5 hover:bg-cyan-950/50 transition-colors">ACTIVATE WEBCAM</button>
             </div>
           </div>
         </div>
@@ -495,31 +495,31 @@ export default function Home() {
         {/* RIGHT COLUMN: Telemetry & Logs */}
         <div className="col-span-3 flex flex-col gap-1 min-h-0 z-10">
           
-          <div className="h-48 border border-red-900/50 bg-black/80 p-3 flex flex-col relative shrink-0">
-             <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-red-500"></div>
+          <div className="h-48 border border-cyan-900/50 bg-black/80 p-3 flex flex-col relative shrink-0">
+             <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-cyan-500"></div>
              
-             <h2 className="text-[10px] tracking-widest uppercase border-b border-red-900/50 pb-1 mb-2 text-red-400">
+             <h2 className="text-[10px] tracking-widest uppercase border-b border-cyan-900/50 pb-1 mb-2 text-cyan-400">
                THREAT TELEMETRY
              </h2>
              
              {/* Circular radar mock */}
              <div className="flex-1 relative flex items-center justify-center">
-                <div className="absolute w-24 h-24 border border-red-900/30 rounded-full"></div>
-                <div className="absolute w-16 h-16 border border-red-500/30 rounded-full border-t-red-500 animate-spin" style={{animationDuration: '3s'}}></div>
+                <div className="absolute w-24 h-24 border border-cyan-900/30 rounded-full"></div>
+                <div className="absolute w-16 h-16 border border-cyan-500/30 rounded-full border-t-cyan-500 animate-spin" style={{animationDuration: '3s'}}></div>
                 <div className="text-center">
-                  <div className="text-2xl font-black text-red-500 drop-shadow-[0_0_5px_red] leading-none">
+                  <div className="text-2xl font-black text-cyan-500 drop-shadow-[0_0_5px_cyan] leading-none">
                     {new Set(events.map(e => e.id)).size}
                   </div>
-                  <div className="text-[8px] text-red-900 tracking-widest">TARGETS</div>
+                  <div className="text-[8px] text-cyan-900 tracking-widest">TARGETS</div>
                 </div>
                 {/* Blips */}
-                {isBreaching && <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div>}
+                {isBreaching && <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-cyan-500 rounded-full animate-ping"></div>}
              </div>
              
              <div className="grid grid-cols-2 gap-2 mt-2 text-center">
-                <div className="border py-1 bg-red-950/10 border-red-900/30">
-                  <div className="text-red-500 font-bold">{events.filter(e => e.threat === 'CRITICAL').length}</div>
-                  <div className="text-[8px] text-red-900 tracking-widest">CRITICAL</div>
+                <div className="border py-1 bg-cyan-950/10 border-cyan-900/30">
+                  <div className="text-cyan-500 font-bold">{events.filter(e => e.threat === 'CRITICAL').length}</div>
+                  <div className="text-[8px] text-cyan-900 tracking-widest">CRITICAL</div>
                 </div>
                 <div className="border py-1 bg-yellow-950/10 border-yellow-900/30">
                   <div className="text-yellow-500 font-bold">{events.filter(e => e.threat === 'WARNING').length}</div>
@@ -528,28 +528,28 @@ export default function Home() {
              </div>
           </div>
 
-          <div className="border border-red-900/50 bg-black/80 p-3 flex flex-col flex-1 min-h-0 relative">
-            <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-red-500"></div>
-            <h2 className="text-[10px] tracking-widest uppercase border-b border-red-900/50 pb-1 mb-2 text-red-400 flex justify-between">
+          <div className="border border-cyan-900/50 bg-black/80 p-3 flex flex-col flex-1 min-h-0 relative">
+            <div className="absolute top-0 right-0 w-2 h-2 border-r border-t border-cyan-500"></div>
+            <h2 className="text-[10px] tracking-widest uppercase border-b border-cyan-900/50 pb-1 mb-2 text-cyan-400 flex justify-between">
               <span>ALERT LOG</span>
               <span className="animate-pulse">_</span>
             </h2>
             
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-red-900">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-cyan-900">
               {events.map((evt, idx) => (
-                <div key={idx} className={`border p-2 relative ${evt.threat === 'CRITICAL' ? 'bg-red-950/40 border-red-500/50' : evt.threat === 'WARNING' ? 'bg-yellow-950/20 border-yellow-900/30' : 'bg-red-950/10 border-red-900/30'}`}>
-                  {evt.threat === 'CRITICAL' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500"></div>}
+                <div key={idx} className={`border p-2 relative ${evt.threat === 'CRITICAL' ? 'bg-cyan-950/40 border-cyan-500/50' : evt.threat === 'WARNING' ? 'bg-yellow-950/20 border-yellow-900/30' : 'bg-cyan-950/10 border-cyan-900/30'}`}>
+                  {evt.threat === 'CRITICAL' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-cyan-500"></div>}
                   {evt.threat === 'WARNING' && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-yellow-500"></div>}
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[8px] opacity-70">{new Date(evt.timestamp * 1000).toLocaleTimeString()}</span>
-                    <span className={`text-[8px] tracking-widest font-bold ${evt.threat === 'CRITICAL' ? 'text-red-500' : evt.threat === 'WARNING' ? 'text-yellow-500' : 'text-red-400'}`}>[{evt.threat}]</span>
+                    <span className={`text-[8px] tracking-widest font-bold ${evt.threat === 'CRITICAL' ? 'text-cyan-500' : evt.threat === 'WARNING' ? 'text-yellow-500' : 'text-cyan-400'}`}>[{evt.threat}]</span>
                   </div>
-                  <div className={`text-[9px] leading-tight uppercase ${evt.threat === 'CRITICAL' ? 'text-red-400 font-bold' : evt.threat === 'WARNING' ? 'text-yellow-400' : 'text-red-400'}`}>{evt.description}</div>
-                  <div className="text-[7px] text-red-900 mt-1">{evt.id}</div>
+                  <div className={`text-[9px] leading-tight uppercase ${evt.threat === 'CRITICAL' ? 'text-cyan-400 font-bold' : evt.threat === 'WARNING' ? 'text-yellow-400' : 'text-cyan-400'}`}>{evt.description}</div>
+                  <div className="text-[7px] text-cyan-900 mt-1">{evt.id}</div>
                 </div>
               ))}
               {events.length === 0 && (
-                <div className="text-[9px] text-red-900 text-center mt-10 tracking-widest">AWAITING TARGET...</div>
+                <div className="text-[9px] text-cyan-900 text-center mt-10 tracking-widest">AWAITING TARGET...</div>
               )}
             </div>
           </div>

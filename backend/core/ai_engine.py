@@ -199,7 +199,7 @@ class AIEngine:
                 elif face_status and face_status.startswith("KNOWN"):
                     color = (0, 255, 255) # Yellow
                 else:
-                    color = (0, 255, 0)   # Bright Neon Green
+                    color = (255, 255, 0) # Jarvis Cyan (BGR)
 
                 cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
 
