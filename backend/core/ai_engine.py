@@ -1,4 +1,4 @@
-﻿import cv2
+import cv2
 import numpy as np
 import threading
 import queue
@@ -179,14 +179,12 @@ class AIEngine:
                 # --- FACE RECOGNITION (persons only, threaded) ---
                 face_status = None
                 if class_id == 0:
-                    if track_id not in self.face_cache or self.face_cache[track_id] == "UNKNOWN":
-                        # Only kick off a new thread if not already scanning
-                        if self.face_cache.get(track_id) != "SCANNING":
-                            self.face_cache[track_id] = "SCANNING"
-                            try:
-                                self.face_queue.put_nowait((raw_frame.copy(), box, track_id))
-                            except queue.Full:
-                                pass  # Drop if overwhelmed
+                    if track_id not in self.face_cache:
+                        self.face_cache[track_id] = "SCANNING"
+                        try:
+                            self.face_queue.put_nowait((raw_frame.copy(), box, track_id))
+                        except queue.Full:
+                            pass
                     face_status = self.face_cache.get(track_id, "SCANNING")
 
                 # --- LICENSE PLATE (vehicles only, always try to read) ---
