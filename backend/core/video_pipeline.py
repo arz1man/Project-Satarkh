@@ -26,11 +26,16 @@ class VideoPipeline:
     def _init_camera(self):
         src = self.source
         if isinstance(src, int) or (isinstance(src, str) and src.isdigit()):
-            self.cap = cv2.VideoCapture(int(src))
+            # Using CAP_DSHOW on Windows significantly reduces latency for webcams
+            self.cap = cv2.VideoCapture(int(src), cv2.CAP_DSHOW)
             try:
                 if self.cap.isOpened():
                     self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                     self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                    self.cap.set(cv2.CAP_PROP_FPS, 30)
+                    self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Prevents massive latency buildup
+                    # Turn off auto-focus and auto-exposure delays if possible
+                    self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
             except Exception as e:
                 print(f"Warning: Could not set webcam properties: {e}")
         else:
